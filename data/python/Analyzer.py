@@ -12,4 +12,12 @@ all_categories = list(set(entry["category"] for entry in recipes_data))
 print(f"Total products: {total_products}")
 print(f"Unique categories: {len(all_categories)}")
 # print("First 5 products:", all_product_names[:5])
-print("All products:", all_product_names)
+# print("All products:", all_product_names)
+
+recipe_count = 0
+for item in recipes_data:
+    for recipe in item.get('recipes', []):
+        if isinstance(recipe, list) and len(recipe) == 2:
+            recipe_count += 1
+
+print("Total number of valid recipes:", recipe_count)
