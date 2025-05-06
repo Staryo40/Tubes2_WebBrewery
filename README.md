@@ -1,6 +1,6 @@
 # MEMASAK STIMA DENGAN ALCHEMY 🔥
 
-## Image Compression and Processing with Quadtree Method
+## BFS and DFS
 
 ## Program Requirements
 Alchemy is the art of yappity yap yap  
