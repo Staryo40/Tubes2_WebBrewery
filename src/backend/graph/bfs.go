@@ -1,236 +1,377 @@
 package graph
 
 import (
-    "encoding/json"
-    "log"
-    "os"
-    "regexp"
-    "strconv"
+    "backend/models"
+    "backend/utils"
     "fmt"
-    "bufio"
 )
 
-type Element struct {
-    Name     string     `json:"name"`
-    Category string     `json:"category"`
-    Recipes  [][]string `json:"recipes"` 
-    Image    string     `json:"image"` 
-}
+// BFS FROM BASIC ELEMENTS (VERY SLOW)
+func ForwardBFS(target string, elements map[string]models.Element, elementTier map[string]int) []models.Node {
+    var queue [][]models.Node
+    
+    if elementTier[target] == 0 {
+        // Return something
+        node := models.Node{
+            Name:        target,
+            Ingredient1: "",
+            Ingredient2: "",
+        }
+        res := []models.Node{node}
+        return res
+    }
 
-var Elements map[string]Element
-var ElementTier map[string]int
-
-func BFSSearch(filePath string, target string, elements map[string]Element) []string {
-    var queue [][]string
-
-    // Initialize queue with starting elements
-    for name, el := range elements {
-        if el.Category == "Starting elements" {
-            queue = append(queue, []string{name})
+    // Initialize queue with elements that are made directly with base elements
+    for _, el := range elements{
+        for _, recipe := range el.Recipes{
+            if (len(recipe) == 2){
+                if (elementTier[recipe[0]] == 0 || elementTier[recipe[1]] == 0){
+                    node := models.Node{
+                        Name:        el.Name,
+                        Ingredient1: recipe[0],
+                        Ingredient2: recipe[1],
+                    }
+                    nodeList := []models.Node{node}
+                    queue = append(queue, nodeList)
+                }
+            }
         }
     }
 
-    visited := make(map[string]bool)
-
     for len(queue) > 0 {
-        path := queue[0]
+        current := queue[0]
         queue = queue[1:]
 
-        current := path[len(path)-1]
+        // fmt.Printf("Dequeued path (last: %s):\n", current[len(current)-1].Name)
+        // for _, n := range current {
+        //     fmt.Printf("  %s ← %s + %s\n", n.Name, n.Ingredient1, n.Ingredient2)
+        // }
 
-        if visited[current] {
-            continue
+        // special expand if the target has already been found
+        last := current[len(current)-1]
+        if last.Name == target {
+            expanded := BFSHandleTarget(target, current, elements, elementTier)
+            if len(expanded) == 1 && utils.PathsEqual(expanded[0], current) {
+                return current
+            } else {
+                queue = append(queue, expanded...)
+            }
         }
-        visited[current] = true
 
-        if current == target {
-            return path 
-        }
-
+        // Expand path
         for _, el := range elements {
             for _, recipe := range el.Recipes {
-                for _, ing := range recipe {
-                    if ing == current {
-                        newPath := append([]string{}, path...)
-                        newPath = append(newPath, el.Name)
+                if elementTier[last.Name] >= elementTier[el.Name] {
+                    continue
+                }
+
+                if len(recipe) == 2 {
+                    if recipe[0] == last.Name || recipe[1] == last.Name {
+                        node := models.Node{
+                            Name:        el.Name,
+                            Ingredient1: recipe[0],
+                            Ingredient2: recipe[1],
+                        }
+                        newPath := append([]models.Node{}, current...)
+                        newPath = append(newPath, node)
                         queue = append(queue, newPath)
-                        break 
                     }
                 }
             }
         }
     }
 
-    return nil 
+    // No valid recipe found
+    return nil
 }
 
-func GetRecipe(filePath string, target string, elements map[string]Element, elementTier map[string]int) []string{
-    path := BFSSearch(filePath, target, elements)
-    if path == nil || len(path) < 2 {
-        return nil
-    }
-
-    targetEl, ok := elements[target]
-    if !ok {
-        return nil
-    }
-
-    secondTier := 100
-    secondRecipe := ""
-    for _, recipe := range targetEl.Recipes {
-        if len(recipe) != 2 {
-            continue
+// BFS FROM TARGET WITHOUT HEURISICS (QUITE SLOW)
+func ReverseBFS(target string, elements map[string]models.Element, elementTier map[string]int) []models.Node {
+    var queue [][]models.Node
+    
+    if elementTier[target] == 0 {
+        node := models.Node{
+            Name:        target,
+            Ingredient1: "",
+            Ingredient2: "",
         }
+        res := []models.Node{node}
+        return res
+    }
 
-        if recipe[0] == path[len(path)-2] {
-            if elementTier[recipe[1]] < secondTier {
-                secondTier = elementTier[recipe[1]]
-                secondRecipe = recipe[1]
+    // Initialize queue direct recipes of the target
+    for _, recipe := range elements[target].Recipes{
+        if len(recipe) == 2{
+            node := models.Node{
+                Name:        target,
+                Ingredient1: recipe[0],
+                Ingredient2: recipe[1],
             }
-        } else if recipe[1] == path[len(path)-2] {
-            if elementTier[recipe[0]] < secondTier {
-                secondTier = elementTier[recipe[0]]
-                secondRecipe = recipe[0]
-            }
+            entry := []models.Node{node}
+            queue = append(queue, entry)
         }
     }
 
-    if secondRecipe == "" {
-        return nil
+    for len(queue) > 0 {
+        current := queue[0]
+        queue = queue[1:]
+
+        expanded := BFSHandleTarget(target, current, elements, elementTier)
+        if len(expanded) == 1 && utils.PathsEqual(expanded[0], current) {
+            return current
+        } else {
+            queue = append(queue, expanded...)
+        }
     }
 
-    return []string{secondRecipe, path[len(path)-2]}
+    // did not find anything
+    return nil
 }
 
-func FullPathHelper(filePath string, target string, elements map[string]Element, elementTier map[string]int, result *[][]string, visited map[string]bool) {
-    if elementTier[target] == 0 || visited[target] {
-        return
+// BFS FROM TARGET WITH HEURISTICS (FAST)
+func HeuristicBFS(target string, elements map[string]models.Element, elementTier map[string]int) []models.Node {   
+    queue := [][]models.Node{}
+    if elementTier[target] == 0 {
+        // Return something
+        node := models.Node{
+            Name:        target,
+            Ingredient1: "",
+            Ingredient2: "",
+        }
+        res := []models.Node{node}
+        return res
     }
 
+    visited := make(map[string]bool)
     visited[target] = true
 
-    recipe := GetRecipe(filePath, target, elements, elementTier)
-    if len(recipe) != 2 {
-        return
+    entries := FindExpansionNodes(target, elements, elementTier)
+    for _, entry := range entries{
+        newEntry := []models.Node{entry}
+        queue = append(queue, newEntry)
     }
+  
 
-    step := []string{recipe[0], recipe[1], target}
-    *result = append(*result, step)
+        for len(queue) > 0 {
+            current := queue[0]
+            queue = queue[1:]
+        
+            // Expand current path using the helper
+            expansions := HeuristicBFSHelper(target, current, elements, elementTier)
 
-    // fmt.Printf("Added step: %s + %s → %s\n", recipe[0], recipe[1], target)
+            if len(expansions) == 1 && IsFullyExpanded(expansions[0], elementTier) {
+                return expansions[0]
+            }
+        
+            for _, path := range expansions {
+                queue = append(queue, path)
+            }
+        }
 
-    if elementTier[recipe[0]] > 0 {
-        FullPathHelper(filePath, recipe[0], elements, elementTier, result, visited)
-    }
-    if elementTier[recipe[1]] > 0 {
-        FullPathHelper(filePath, recipe[1], elements, elementTier, result, visited)
-    }
+    return nil
 }
 
-func GetFullPathToTarget(filePath string, target string, elements map[string]Element, elementTier map[string]int) [][]string {
-    var result [][]string
-    sited := make(map[string]bool)
-    FullPathHelper(filePath, target, elements, elementTier, &result, sited)
-    return result
-}
-
-func LoadElements(filePath string, elements map[string]Element) {
-    file, err := os.Open(filePath)
-    if err != nil {
-        log.Fatalf("Failed to open %s: %v", filePath, err)
+// HELPER FUNCTIONS
+func BFSHandleTarget(target string, path []models.Node, elements map[string]models.Element, elementTier map[string]int) [][]models.Node {
+    fmt.Println("🔍 Attempting to expand full path:")
+    for i := len(path) - 1; i >= 0; i-- {
+        node := path[i]
+        fmt.Printf("  %d. %s ← %s + %s\n", len(path)-i, node.Name, node.Ingredient1, node.Ingredient2)
     }
-    defer file.Close()
+    fmt.Println()
 
-    var all []Element
-    decoder := json.NewDecoder(file)
-    if err := decoder.Decode(&all); err != nil {
-        log.Fatalf("Failed to parse elements JSON: %v", err)
+    nameSet := make(map[string]bool)
+    for _, node := range path {
+        nameSet[node.Name] = true
     }
 
-    for _, el := range all {
-        elements[el.Name] = el
-    }
-}
-
-func LoadTierMap(filePath string, elementTier map[string]int){
-    file, err := os.Open(filePath)
-    if err != nil {
-        log.Fatalf("Failed to open JSON: %v", err)
-    }
-    defer file.Close()
-
-    var elements []Element
-    decoder := json.NewDecoder(file)
-    if err := decoder.Decode(&elements); err != nil {
-        log.Fatalf("Failed to decode JSON: %v", err)
+    // Find recipe with missing path
+    var missing string
+    for _, node := range path {
+        if elementTier[node.Ingredient1] != 0 && !nameSet[node.Ingredient1] {
+            missing = node.Ingredient1
+            break
+        }
+        if elementTier[node.Ingredient2] != 0 && !nameSet[node.Ingredient2] {
+            missing = node.Ingredient2
+            break
+        }
     }
 
-    maxTier := 0
-    tierRegex := regexp.MustCompile(`Tier (\d+) elements`)
+    if missing == "" {
+        return [][]models.Node{path}
+    }
 
-    for _, el := range elements {
-        var tier int
-        switch {
-        case el.Category == "Starting elements":
-            tier = 0
-        case el.Category == "Special element":
-            tier = 16 // will adjust later based on maxTier
-        case tierRegex.MatchString(el.Category):
-            numStr := tierRegex.FindStringSubmatch(el.Category)[1]
-            parsed, err := strconv.Atoi(numStr)
-            if err != nil {
-                log.Printf("Failed to parse tier from %q", el.Category)
+    // Find recipe for missing
+    var expandedPaths [][]models.Node
+    for _, recipe := range elements[missing].Recipes {
+        if len(recipe) == 2 {
+            newNode := models.Node{
+                Name:        missing,
+                Ingredient1: recipe[0],
+                Ingredient2: recipe[1],
+            }
+
+            if nameSet[newNode.Name] {
+                continue 
+            }
+
+            if (elementTier[recipe[0]] > elementTier[missing] || elementTier[recipe[1]] > elementTier[missing]){
                 continue
             }
-            tier = parsed
-            if tier > maxTier {
-                maxTier = tier
-            }
-        default:
-            log.Printf("Unknown category: %s", el.Category)
-            continue
-        }
 
-        elementTier [el.Name] = tier
-    }
-
-    // Update special elements if maxTier found is different
-    for name, tier := range elementTier  {
-        if tier == 16 {
-            elementTier [name] = maxTier + 1
+            // fmt.Printf("🔁 Expanding missing: %s → %s + %s\n", newNode.Name, newNode.Ingredient1, newNode.Ingredient2)
+            extended := append([]models.Node{newNode}, path...)
+            expandedPaths = append(expandedPaths, extended)
         }
     }
+
+    return expandedPaths
 }
 
-func WriteGraphvizDOT(filename string, steps [][]string) error {
-    file, err := os.Create(filename)
-    if err != nil {
-        return err
+func HeuristicBFSHelper(target string, path []models.Node, elements map[string]models.Element, elementTier map[string]int) [][]models.Node {
+    // for i := len(path) - 1; i >= 0; i-- {
+    //     node := path[i]
+    //     fmt.Printf("  %d. %s ← %s + %s\n", len(path)-i, node.Name, node.Ingredient1, node.Ingredient2)
+    // }
+    // fmt.Println()
+
+    nameSet := make(map[string]bool)
+    for _, node := range path {
+        nameSet[node.Name] = true
     }
-    defer file.Close()
 
-    writer := bufio.NewWriter(file)
+    // Find recipe with missing path
+    var missing string
+    for _, node := range path {
+        if elementTier[node.Ingredient1] != 0 && !nameSet[node.Ingredient1] {
+            missing = node.Ingredient1
+            break
+        }
+        if elementTier[node.Ingredient2] != 0 && !nameSet[node.Ingredient2] {
+            missing = node.Ingredient2
+            break
+        }
+    }
 
-    writer.WriteString("digraph G {\n")
-    writer.WriteString("    rankdir=TB;\n") // top to bottom layout
-    writer.WriteString("    node [shape=box, style=filled, fillcolor=lightblue];\n\n")
+    if missing == "" {
+        return [][]models.Node{path}
+    }
 
-    // Write all edges
-    for _, step := range steps {
-        if len(step) != 3 {
+    // Find recipe for missing
+    var expandedPaths [][]models.Node
+    for _, newNode := range FindExpansionNodes(missing, elements, elementTier) {
+        if nameSet[newNode.Name] {
             continue
         }
-        from1 := step[0]
-        from2 := step[1]
-        to := step[2]
 
-        // Draw edges with labels
-        writer.WriteString(fmt.Sprintf("    \"%s\" -> \"%s\";\n", from1, to))
-        writer.WriteString(fmt.Sprintf("    \"%s\" -> \"%s\";\n", from2, to))
+        extended := append([]models.Node{newNode}, path...)
+        expandedPaths = append(expandedPaths, extended)
     }
 
-    writer.WriteString("\n}")
-    writer.Flush()
-    fmt.Println("DOT graph written to", filename)
-    return nil
+    return expandedPaths
+}
+
+func IsFullyExpanded(path []models.Node, elementTier map[string]int) bool {
+    nameSet := make(map[string]bool)
+    for _, node := range path {
+        nameSet[node.Name] = true
+    }
+
+    for _, node := range path {
+        if elementTier[node.Ingredient1] != 0 && !nameSet[node.Ingredient1] {
+            return false
+        }
+        if elementTier[node.Ingredient2] != 0 && !nameSet[node.Ingredient2] {
+            return false
+        }
+    }
+    return true
+}
+
+func FindExpansionNodes(target string, elements map[string]models.Element, elementTier map[string]int) []models.Node {
+    used := make(map[string]bool)
+    var result []models.Node
+
+    recipes := elements[target].Recipes
+    targetTier := elementTier[target]
+
+    // Look for tier 0 + tier 0, if found just return
+    for _, r := range recipes {
+        if len(r) != 2 {
+            continue
+        }
+        a, b := r[0], r[1]
+        if elementTier[a] == 0 && elementTier[b] == 0 {
+            return []models.Node{{
+                Name:        target,
+                Ingredient1: a,
+                Ingredient2: b,
+            }}
+        }
+    }
+
+    // Otherwise, apply best-recipe-per-ingredient logic
+    for _, r := range recipes {
+        if len(r) != 2 {
+            continue
+        }
+
+        ing1, ing2 := r[0], r[1]
+        tier1, tier2 := elementTier[ing1], elementTier[ing2]
+
+        // Skip both-tier-0 combos (already handled above)
+        if tier1 == 0 && tier2 == 0 {
+            continue
+        }
+
+        for _, ing := range []string{ing1, ing2} {
+            if elementTier[ing] == 0 || used[ing] {
+                continue
+            }
+
+            // fmt.Println(ing1 + " + " + ing2 + " -> " + target)
+
+            // Heuristic: ingredient must be strictly lower than product
+            if elementTier[ing] >= targetTier {
+                continue
+            }
+
+            bestRecipe := []string{}
+            bestSum := 100
+
+            for _, alt := range recipes {
+                if len(alt) != 2 {
+                    continue
+                }
+                a, b := alt[0], alt[1]
+                ta, tb := elementTier[a], elementTier[b]
+
+                if a == ing && ta >= tb && ta < targetTier {
+                    sum := ta + tb
+                    if sum < bestSum {
+                        bestRecipe = []string{a, b}
+                        bestSum = sum
+                    }
+                } else if b == ing && tb >= ta && tb < targetTier {
+                    sum := ta + tb
+                    if sum < bestSum {
+                        bestRecipe = []string{a, b}
+                        bestSum = sum
+                    }
+                }
+            }
+
+            if len(bestRecipe) == 2 {
+                result = append(result, models.Node{
+                    Name:        target,
+                    Ingredient1: bestRecipe[0],
+                    Ingredient2: bestRecipe[1],
+                })
+                used[ing] = true
+            }
+        }
+    }
+
+    return result
 }
