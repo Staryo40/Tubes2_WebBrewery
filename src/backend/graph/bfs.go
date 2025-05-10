@@ -147,7 +147,7 @@ func HeuristicForwardBFS(target string, elements map[string]models.Element, elem
     for _, el := range elements{
         for _, recipe := range el.Recipes{
             if (len(recipe) == 2){
-                if (elementTier[recipe[0]] == 0 || elementTier[recipe[1]] == 0 && elementTier[el.Name] < elementTier[target]){
+                if ((elementTier[recipe[0]] == 0 || elementTier[recipe[1]] == 0) && elementTier[el.Name] < elementTier[target]){
                     node := models.Node{
                         Name:        el.Name,
                         Ingredient1: recipe[0],
@@ -160,6 +160,8 @@ func HeuristicForwardBFS(target string, elements map[string]models.Element, elem
         }
     }
 
+    foundTarget := false
+    targetNodeCount := 0
     for len(queue) > 0 {
         current := queue[0]
         queue = queue[1:]
@@ -172,6 +174,9 @@ func HeuristicForwardBFS(target string, elements map[string]models.Element, elem
         // special expand if the target has already been found
         last := current[len(current)-1]
         if last.Name == target {
+            if !foundTarget {
+                targetNodeCount = len(current)
+            }
             expanded := BFSHandleTarget(target, current, elements, elementTier)
             if len(expanded) == 1 && utils.PathsEqual(expanded[0], current) {
                 return current
