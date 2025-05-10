@@ -3,6 +3,7 @@ package api
 import (
 	"strings"
 	"time"
+	"fmt"
     "encoding/json"
     "net/http"
     "backend/graph"
@@ -21,18 +22,19 @@ func InitData(elements map[string]models.Element, tiers map[string]int) {
 }
 
 func RecipeHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("tes0")
 	// GENERAL REQUEST CHECKS
     if r.Method != http.MethodPost {
         http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
         return
     }
-
+	fmt.Println("tes1")
     var req models.RequestPayload
     if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Target == "" {
         http.Error(w, "Invalid JSON or missing target", http.StatusBadRequest)
         return
     }
-
+	fmt.Println("tes2")
 	// REQUEST SPECIFIC INPUT CHECKS
 	if _, exists := Elements[req.Target]; !exists {
 		w.WriteHeader(http.StatusNotFound)
@@ -43,14 +45,14 @@ func RecipeHandler(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	
+	fmt.Println("tes3")
 	method := strings.ToLower(req.Method)
 	if method != "bfs" && method != "dfs" {
 		http.Error(w, "Method must be 'BFS' or 'DFS'", http.StatusBadRequest)
 		return
 	}
 	req.Method = strings.ToUpper(method) 
-	
+	fmt.Println("tes4")
 	if req.PathNumber <= 0 {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Header().Set("Content-Type", "application/json")
@@ -60,7 +62,7 @@ func RecipeHandler(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	
+	fmt.Println("tes5")
 	if req.PathNumber > 100 {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Header().Set("Content-Type", "application/json")
@@ -70,7 +72,7 @@ func RecipeHandler(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
+	fmt.Println("tes6")
 	// GET OUTPUT
 	start := time.Now()
     var result [][]models.Node
@@ -109,6 +111,9 @@ func RecipeHandler(w http.ResponseWriter, r *http.Request) {
 	
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+	fmt.Println("tes7")
+	fmt.Printf("Response Count: %d\n", response.Count)
+	fmt.Printf("Response ElapsedTime (microseconds): %d\n", response.ElapsedTime)
 }
 
 func WithCORS(handler http.HandlerFunc) http.HandlerFunc {
