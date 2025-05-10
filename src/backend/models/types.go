@@ -7,6 +7,11 @@ type Element struct {
     Image    string     `json:"image"` 
 }
 
+type ElementEntry struct {
+	Name    string
+	Element Element
+}
+
 type Node struct {
     Name string
     Ingredient1 string

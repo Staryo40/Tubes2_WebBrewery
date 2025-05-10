@@ -4,6 +4,18 @@ import(
 	"backend/models"
 )
 
+func ConvertToElementList(elements map[string]models.Element) []models.ElementEntry {
+	list := make([]models.ElementEntry, 0, len(elements))
+	for name, element := range elements {
+		entry := models.ElementEntry{
+			Name:    name,
+			Element: element,
+		}
+		list = append(list, entry)
+	}
+	return list
+}
+
 func PathsEqual(a, b []models.Node) bool {
     if len(a) != len(b) {
         return false
