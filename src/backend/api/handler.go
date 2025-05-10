@@ -100,8 +100,13 @@ func RecipeHandler(w http.ResponseWriter, r *http.Request) {
         http.Error(w, "No paths found for target", http.StatusNotFound)
         return
     }
-	
 
-    w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(models.ResponsePayload{Paths: result})
+    response := models.ResponsePayload{
+		Count:     len(result),
+		ElapsedMs: elapsed.Milliseconds(),
+		Paths:     result,
+	}
+	
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }

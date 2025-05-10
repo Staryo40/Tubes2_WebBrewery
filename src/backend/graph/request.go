@@ -33,7 +33,7 @@ func FindPathsDFS(target string, elements map[string]models.Element, elementTier
 		maxIteration := 150
 		result := [][]models.Node{}
 		for len(result) < pathNumber && i < maxIteration {
-			resEntry := ReverseDFS(target, elements, elementTier, startRecipe, startN, restriction)
+			resEntry := ReverseDFS(target, elements, elementTier, startRecipe+i, startN+i, restriction)
 			if resEntry == nil {
 				i++
 				continue

@@ -1,46 +1,29 @@
 package main
 
 import (
-    "fmt"
-    "time"
+    // "fmt"
+    // "time"
     "log"
-    // "net/http"
-    // "backend/api" 
-    "backend/graph"
+    "net/http"
+    "backend/api" 
+    // "backend/graph"
     "backend/models"
     "backend/utils"
 )
 
 func main() {
-    elementTier := make(map[string]int)
     elements := make(map[string]models.Element)
-    filePath := "../frontend/public/elements.json"
-    utils.LoadTierMap(filePath, elementTier)
-    utils.LoadElements(filePath, elements);
+	tiers := make(map[string]int)
+    jsonPath := "../frontend/public/elements.json"
 
-    // err := graph.WriteGraphvizDOT("grilled.dot", steps)
-    // if err != nil {
-    //     log.Fatal(err)
-    // }
+	utils.LoadElements(jsonPath, elements)
+	utils.LoadTierMap(jsonPath, tiers)	
 
-    // start := time.Now()
-    // result := graph.HeuristicReverseBFS("Algae", elements, elementTier)
-    // elapsed := time.Since(start)
-    // for i, node := range result {
-    //     fmt.Printf("%d. %s + %s → %s\n", i+1, node.Ingredient1, node.Ingredient2, node.Name)
-    // }
-    // fmt.Printf("⏱ Execution time: %s\n", elapsed)
+	api.InitData(elements, tiers)
 
-    start := time.Now()
-    result := graph.ReverseDFS("Algae", elements, elementTier, 20, 0, false)
-    elapsed := time.Since(start)
-    for i, node := range result {
-        fmt.Printf("%d. %s + %s → %s\n", i+1, node.Ingredient1, node.Ingredient2, node.Name)
-    }
-    fmt.Printf("⏱ Execution time: %s\n", elapsed)
+	// Register route
+	http.HandleFunc("/api/recipe", api.RecipeHandler)
 
-    err := utils.WriteGraphvizImage(result, "test/algae.dot", "test/algae.png")
-    if err != nil {
-        log.Fatal(err)
-    }
+	log.Println("Server is running at http://localhost:8080")
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
