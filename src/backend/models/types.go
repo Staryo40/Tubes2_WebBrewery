@@ -22,7 +22,7 @@ type RequestPayload struct {
 
 type ResponsePayload struct {
     Count     int           `json:"count"`   
-    ElapsedMs int64         `json:"elapsedMs"` 
+    ElapsedTime int64         `json:"elapsedTime"` 
     Paths     [][]Node      `json:"paths"`     
 }
 

@@ -17,9 +17,9 @@ func ReverseDFS(target string, elements map[string]models.Element, elementTier m
 	}
 	if ok {
 		// Reverse the stack to get the path from base → target
-		for i, j := 0, len(stack)-1; i < j; i, j = i+1, j-1 {
-			stack[i], stack[j] = stack[j], stack[i]
-		}
+		// for i, j := 0, len(stack)-1; i < j; i, j = i+1, j-1 {
+		// 	stack[i], stack[j] = stack[j], stack[i]
+		// }
 		return stack
 	}
 
