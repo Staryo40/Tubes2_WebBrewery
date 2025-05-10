@@ -1,9 +1,9 @@
 package graph
 
 import (
-    "backend/models"
-    "backend/utils"
-    // "fmt"
+	"backend/models"
+	"backend/utils"
+	// "fmt"
 )
 
 // BFS FROM BASIC ELEMENTS (VERY SLOW)
@@ -129,91 +129,84 @@ func ReverseBFS(target string, elements map[string]models.Element, elementTier m
 }
 
 // BFS FROM BASIC ELEMENTS WITH HEURISTICS (#)
-func HeuristicForwardBFS(target string, elements map[string]models.Element, elementTier map[string]int) []models.Node {
-    var queue [][]models.Node
-    
+func HeuristicForwardBFS(target string, elements map[string]models.Element, elementTier map[string]int, num int) []models.Node {
     if elementTier[target] == 0 {
-        // Return something
-        node := models.Node{
-            Name:        target,
-            Ingredient1: "",
-            Ingredient2: "",
-        }
-        res := []models.Node{node}
-        return res
+        return []models.Node{{Name: target}}
     }
 
-    // Initialize queue with elements that are made directly with base elements
-    for _, el := range elements{
-        for _, recipe := range el.Recipes{
-            if (len(recipe) == 2){
-                if ((elementTier[recipe[0]] == 0 || elementTier[recipe[1]] == 0) && elementTier[el.Name] < elementTier[target]){
-                    node := models.Node{
+    availableRecipes := []models.Node{}
+    seen := make(map[string]bool) 
+
+    // Initialization: base combinations
+    for _, el := range elements {
+        if (elementTier[el.Name] == 0){
+            seen[el.Name] = true
+        }
+    }
+
+    for _, el := range elements {
+        for _, recipe := range el.Recipes {
+            if len(recipe) == 2 &&
+                elementTier[recipe[0]] == 0 && elementTier[recipe[1]] == 0 &&
+                elementTier[el.Name] <= elementTier[target] {
+                
+                if !seen[el.Name] {
+                    newNode := models.Node{
                         Name:        el.Name,
                         Ingredient1: recipe[0],
                         Ingredient2: recipe[1],
                     }
-                    nodeList := []models.Node{node}
-                    queue = append(queue, nodeList)
+                    availableRecipes = append(availableRecipes, newNode)
+                    seen[el.Name] = true
                 }
             }
         }
     }
 
-    foundTarget := false
-    targetNodeCount := 0
-    for len(queue) > 0 {
-        current := queue[0]
-        queue = queue[1:]
+    addition := true
+    for addition {
+        addition = false
 
-        // fmt.Printf("Dequeued path (last: %s):\n", current[len(current)-1].Name)
-        // for _, n := range current {
-        //     fmt.Printf("  %s ← %s + %s\n", n.Name, n.Ingredient1, n.Ingredient2)
-        // }
-
-        // special expand if the target has already been found
-        last := current[len(current)-1]
-        if last.Name == target {
-            if !foundTarget {
-                targetNodeCount = len(current)
-            }
-            expanded := BFSHandleTarget(target, current, elements, elementTier)
-            if len(expanded) == 1 && utils.PathsEqual(expanded[0], current) {
-                return current
-            } else {
-                queue = append(queue, expanded...)
+        if seen[target] {
+            result := HeuristicForwardBFSHelper(target, availableRecipes, elements, elementTier)
+            if IsFullyExpanded(result, elementTier) {
+                return result
             }
         }
+    
+        current := make([]models.Node, len(availableRecipes))
+        copy(current, availableRecipes)
 
-        // Expand path
         for _, el := range elements {
+            if seen[el.Name] || elementTier[el.Name] > elementTier[target] {
+                continue
+            }
+
             for _, recipe := range el.Recipes {
-                if elementTier[last.Name] >= elementTier[el.Name] {
+                if len(recipe) != 2 || seen[el.Name] {
                     continue
                 }
 
-                if len(recipe) == 2 {
-                    if recipe[0] == last.Name || recipe[1] == last.Name {
-                        node := models.Node{
-                            Name:        el.Name,
-                            Ingredient1: recipe[0],
-                            Ingredient2: recipe[1],
-                        }
-                        newPath := append([]models.Node{}, current...)
-                        newPath = append(newPath, node)
-                        queue = append(queue, newPath)
+                if seen[recipe[0]] && seen[recipe[1]] {
+                    newNode := models.Node{
+                        Name:        el.Name,
+                        Ingredient1: recipe[0],
+                        Ingredient2: recipe[1],
                     }
+                    
+                    availableRecipes = append(availableRecipes, newNode)
+                    seen[el.Name] = true
+                    addition = true
                 }
             }
         }
     }
 
-    // No valid recipe found
-    return nil
+    return nil // No valid recipe found
 }
 
 // BFS FROM TARGET WITH HEURISTICS (FAST)
-func HeuristicReverseBFS(target string, elements map[string]models.Element, elementTier map[string]int) []models.Node {   
+func HeuristicReverseBFS(target string, elements map[string]models.Element, elementTier map[string]int, seed int) []models.Node {   
     queue := [][]models.Node{}
     if elementTier[target] == 0 {
         // Return something
@@ -234,24 +227,99 @@ func HeuristicReverseBFS(target string, elements map[string]models.Element, elem
         newEntry := []models.Node{entry}
         queue = append(queue, newEntry)
     }
-  
 
-        for len(queue) > 0 {
-            current := queue[0]
-            queue = queue[1:]
-        
-            // Expand current path using the helper
-            expansions := HeuristicBFSHelper(target, current, elements, elementTier)
+    count := 0
+    for len(queue) > 0 {
+        current := queue[0]
+        queue = queue[1:]
+    
+        // Expand current path using the helper
+        expansions := HeuristicReverseBFSHelper(target, current, elements, elementTier)
 
-            if len(expansions) == 1 && IsFullyExpanded(expansions[0], elementTier) {
-                return expansions[0]
+        for _, expanded := range expansions {
+            if IsFullyExpanded(expanded, elementTier) {
+                if count == seed {
+                    return expanded
+                }
+                count++
+            } else {
+                queue = append(queue, expanded)
             }
-        
-            queue = append(queue, expansions...)
         }
+    }
 
     return nil
 }
+
+// BIDIRECTIONAL
+func HeuristicBidirectionalBFS(target string, elements map[string]models.Element, elementTier map[string]int, seed int) []models.Node {
+    if elementTier[target] == 0 {
+        return []models.Node{{Name: target}}
+    }
+
+    type PathMap map[string][]models.Node
+
+    forwardSeen := make(map[string]bool)
+    forwardPaths := make(PathMap)
+    queueForward := []string{}
+
+    // Step 1: Initialize Forward from Base
+    for name, tier := range elementTier {
+        if tier == 0 {
+            forwardSeen[name] = true
+            forwardPaths[name] = []models.Node{{Name: name}}
+            queueForward = append(queueForward, name)
+        }
+    }
+
+    for _, el := range elements {
+        for _, recipe := range el.Recipes {
+            if len(recipe) == 2 && forwardSeen[recipe[0]] && forwardSeen[recipe[1]] {
+                node := models.Node{Name: el.Name, Ingredient1: recipe[0], Ingredient2: recipe[1]}
+                forwardSeen[el.Name] = true
+                forwardPaths[el.Name] = append([]models.Node{}, forwardPaths[recipe[0]]...)
+                forwardPaths[el.Name] = append(forwardPaths[el.Name], forwardPaths[recipe[1]]...)
+                forwardPaths[el.Name] = append(forwardPaths[el.Name], node)
+                queueForward = append(queueForward, el.Name)
+            }
+        }
+    }
+
+    // Step 2: Start Reverse from Target
+    queueReverse := [][]models.Node{}
+    entries := FindExpansionNodes(target, elements, elementTier)
+    for _, entry := range entries {
+        queueReverse = append(queueReverse, []models.Node{entry})
+    }
+
+    count := 0
+    for len(queueReverse) > 0 {
+        current := queueReverse[0]
+        queueReverse = queueReverse[1:]
+
+        expansions := HeuristicReverseBFSHelper(target, current, elements, elementTier)
+
+        for _, expanded := range expansions {
+            if IsFullyExpanded(expanded, elementTier) {
+                last := expanded[len(expanded)-1].Name
+                if forwardSeen[last] {
+                    forwardPart := forwardPaths[last]
+                    merged := append([]models.Node{}, forwardPart...)
+                    merged = append(merged, expanded...)
+                    if count == seed {
+                        return merged
+                    }
+                    count++
+                }
+            } else {
+                queueReverse = append(queueReverse, expanded)
+            }
+        }
+    }
+
+    return nil
+}
+
 
 // HELPER FUNCTIONS
 func BFSHandleTarget(target string, path []models.Node, elements map[string]models.Element, elementTier map[string]int) [][]models.Node {
@@ -263,8 +331,10 @@ func BFSHandleTarget(target string, path []models.Node, elements map[string]mode
     // fmt.Println()
 
     nameSet := make(map[string]bool)
+    producedBy := make(map[string]models.Node)
     for _, node := range path {
         nameSet[node.Name] = true
+        producedBy[node.Name] = node
     }
 
     // Find recipe with missing path
@@ -294,15 +364,18 @@ func BFSHandleTarget(target string, path []models.Node, elements map[string]mode
                 Ingredient2: recipe[1],
             }
 
-            if nameSet[newNode.Name] {
-                continue 
-            }
-
             if (elementTier[recipe[0]] > elementTier[missing] || elementTier[recipe[1]] > elementTier[missing]){
                 continue
             }
 
-            // fmt.Printf("🔁 Expanding missing: %s → %s + %s\n", newNode.Name, newNode.Ingredient1, newNode.Ingredient2)
+            if existing, exists := producedBy[newNode.Name]; exists {
+                // If already produced with same ingredients, skip
+                if (existing.Ingredient1 == newNode.Ingredient1 && existing.Ingredient2 == newNode.Ingredient2) ||
+                   (existing.Ingredient1 == newNode.Ingredient2 && existing.Ingredient2 == newNode.Ingredient1) {
+                    continue
+                }
+            }
+
             extended := append([]models.Node{newNode}, path...)
             expandedPaths = append(expandedPaths, extended)
         }
@@ -311,13 +384,60 @@ func BFSHandleTarget(target string, path []models.Node, elements map[string]mode
     return expandedPaths
 }
 
-func HeuristicBFSHelper(target string, path []models.Node, elements map[string]models.Element, elementTier map[string]int) [][]models.Node {
-    // for i := len(path) - 1; i >= 0; i-- {
-    //     node := path[i]
-    //     fmt.Printf("  %d. %s ← %s + %s\n", len(path)-i, node.Name, node.Ingredient1, node.Ingredient2)
-    // }
-    // fmt.Println()
+func HeuristicForwardBFSHelper(target string, availableRecipe []models.Node, elements map[string]models.Element, elementTier map[string]int) []models.Node {
+	recipeMap := make(map[string]models.Node)
+	for _, node := range availableRecipe {
+		recipeMap[node.Name] = node
+	}
 
+	var presentRecipe models.Node
+	found := false
+
+	for _, recipe := range elements[target].Recipes {
+		if len(recipe) != 2 {
+			continue
+		}
+		if (IngredientInRecipeList(recipe[0], availableRecipe) || elementTier[recipe[0]] == 0) && (IngredientInRecipeList(recipe[1], availableRecipe) || elementTier[recipe[1]] == 0) {
+			presentRecipe = models.Node{
+				Name:        target,
+				Ingredient1: recipe[0],
+				Ingredient2: recipe[1],
+			}
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return nil
+	}
+
+	visited := make(map[string]bool)
+	result := reconstructPath(presentRecipe, recipeMap, visited)
+	return result
+}
+
+func reconstructPath(node models.Node, recipeMap map[string]models.Node, visited map[string]bool) []models.Node {
+	if visited[node.Name] {
+		return nil 
+	}
+	visited[node.Name] = true
+
+	var result []models.Node
+
+	if subNode, ok := recipeMap[node.Ingredient1]; ok {
+		result = append(result, reconstructPath(subNode, recipeMap, visited)...)
+	}
+
+	if subNode, ok := recipeMap[node.Ingredient2]; ok {
+		result = append(result, reconstructPath(subNode, recipeMap, visited)...)
+	}
+
+	result = append(result, node)
+	return result
+}
+
+func HeuristicReverseBFSHelper(target string, path []models.Node, elements map[string]models.Element, elementTier map[string]int) [][]models.Node {
     nameSet := make(map[string]bool)
     for _, node := range path {
         nameSet[node.Name] = true
@@ -355,6 +475,10 @@ func HeuristicBFSHelper(target string, path []models.Node, elements map[string]m
 }
 
 func IsFullyExpanded(path []models.Node, elementTier map[string]int) bool {
+    if len(path) == 0 || path == nil {
+        return false
+    }
+
     nameSet := make(map[string]bool)
     for _, node := range path {
         nameSet[node.Name] = true
@@ -378,7 +502,6 @@ func FindExpansionNodes(target string, elements map[string]models.Element, eleme
     recipes := elements[target].Recipes
     targetTier := elementTier[target]
 
-    // Look for tier 0 + tier 0, if found just return
     for _, r := range recipes {
         if len(r) != 2 {
             continue
@@ -402,7 +525,6 @@ func FindExpansionNodes(target string, elements map[string]models.Element, eleme
         ing1, ing2 := r[0], r[1]
         tier1, tier2 := elementTier[ing1], elementTier[ing2]
 
-        // Skip both-tier-0 combos (already handled above)
         if tier1 == 0 && tier2 == 0 {
             continue
         }
@@ -412,9 +534,6 @@ func FindExpansionNodes(target string, elements map[string]models.Element, eleme
                 continue
             }
 
-            // fmt.Println(ing1 + " + " + ing2 + " -> " + target)
-
-            // Heuristic: ingredient must be strictly lower than product
             if elementTier[ing] >= targetTier {
                 continue
             }
@@ -456,4 +575,20 @@ func FindExpansionNodes(target string, elements map[string]models.Element, eleme
     }
 
     return result
+}
+
+func ComboKey(product, ing1, ing2 string) string {
+	if ing1 > ing2 {
+		ing1, ing2 = ing2, ing1
+	}
+	return product + "|" + ing1 + "+" + ing2
+}
+
+func IngredientInRecipeList(ing string, recipeList []models.Node) bool {
+    for _, node := range recipeList{
+        if ing == node.Name {
+            return true
+        }
+    }
+    return false
 }

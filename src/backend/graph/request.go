@@ -9,7 +9,7 @@ func FindPathsBFS(target string, elements map[string]models.Element, elementTier
 	if bi {
 
 	} else {
-		resEntry := HeuristicReverseBFS(target, elements, elementTier)
+		resEntry := HeuristicReverseBFS(target, elements, elementTier, 0)
 		if resEntry == nil {
 			return nil
 		}

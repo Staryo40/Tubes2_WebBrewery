@@ -9,17 +9,24 @@ import (
 func ReverseDFS(target string, elements map[string]models.Element, elementTier map[string]int, recipe int, num int, strict bool) []models.Node {
 	var stack []models.Node
 
+	if elementTier[target] == 0{
+		node := models.Node{
+			Name: target,
+			Ingredient1: "",
+			Ingredient2: "",
+		}
+		stack = append(stack, node)
+		return stack
+	}
+
 	var ok bool
 	if strict {
 		ok = ReverseDFSHelper(target, recipe, num, elements, elementTier, &stack)
 	} else {
 		ok = LooseReverseDFSHelper(target, recipe, num, elements, elementTier, &stack)
 	}
+
 	if ok {
-		// Reverse the stack to get the path from base → target
-		// for i, j := 0, len(stack)-1; i < j; i, j = i+1, j-1 {
-		// 	stack[i], stack[j] = stack[j], stack[i]
-		// }
 		return stack
 	}
 
