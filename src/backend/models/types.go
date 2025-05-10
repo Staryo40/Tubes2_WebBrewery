@@ -12,3 +12,22 @@ type Node struct {
     Ingredient1 string
     Ingredient2 string
 }
+
+type RequestPayload struct {
+    Target string 		`json:"target"`
+    Method string 		`json:"method"`
+    PathNumber  int 	`json:"pathNumber"`  
+	Bidirectional bool 	`json: "bidirectional"`
+}
+
+type ResponsePayload struct {
+    Count     int           `json:"count"`   
+    ElapsedMs int64         `json:"elapsedMs"` 
+    Paths     [][]Node      `json:"paths"`     
+}
+
+type ErrorResponse struct {
+	Error   string         `json:"error"`
+	Request RequestPayload `json:"request"`
+}
+

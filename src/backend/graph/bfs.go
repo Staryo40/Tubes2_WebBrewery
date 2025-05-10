@@ -3,7 +3,7 @@ package graph
 import (
     "backend/models"
     "backend/utils"
-    "fmt"
+    // "fmt"
 )
 
 // BFS FROM BASIC ELEMENTS (VERY SLOW)
@@ -128,8 +128,87 @@ func ReverseBFS(target string, elements map[string]models.Element, elementTier m
     return nil
 }
 
+// BFS FROM BASIC ELEMENTS WITH HEURISTICS (#)
+func HeuristicForwardBFS(target string, elements map[string]models.Element, elementTier map[string]int) []models.Node {
+    var queue [][]models.Node
+    
+    if elementTier[target] == 0 {
+        // Return something
+        node := models.Node{
+            Name:        target,
+            Ingredient1: "",
+            Ingredient2: "",
+        }
+        res := []models.Node{node}
+        return res
+    }
+
+    // Initialize queue with elements that are made directly with base elements
+    for _, el := range elements{
+        for _, recipe := range el.Recipes{
+            if (len(recipe) == 2){
+                if (elementTier[recipe[0]] == 0 || elementTier[recipe[1]] == 0 && elementTier[el.Name] < elementTier[target]){
+                    node := models.Node{
+                        Name:        el.Name,
+                        Ingredient1: recipe[0],
+                        Ingredient2: recipe[1],
+                    }
+                    nodeList := []models.Node{node}
+                    queue = append(queue, nodeList)
+                }
+            }
+        }
+    }
+
+    for len(queue) > 0 {
+        current := queue[0]
+        queue = queue[1:]
+
+        // fmt.Printf("Dequeued path (last: %s):\n", current[len(current)-1].Name)
+        // for _, n := range current {
+        //     fmt.Printf("  %s ← %s + %s\n", n.Name, n.Ingredient1, n.Ingredient2)
+        // }
+
+        // special expand if the target has already been found
+        last := current[len(current)-1]
+        if last.Name == target {
+            expanded := BFSHandleTarget(target, current, elements, elementTier)
+            if len(expanded) == 1 && utils.PathsEqual(expanded[0], current) {
+                return current
+            } else {
+                queue = append(queue, expanded...)
+            }
+        }
+
+        // Expand path
+        for _, el := range elements {
+            for _, recipe := range el.Recipes {
+                if elementTier[last.Name] >= elementTier[el.Name] {
+                    continue
+                }
+
+                if len(recipe) == 2 {
+                    if recipe[0] == last.Name || recipe[1] == last.Name {
+                        node := models.Node{
+                            Name:        el.Name,
+                            Ingredient1: recipe[0],
+                            Ingredient2: recipe[1],
+                        }
+                        newPath := append([]models.Node{}, current...)
+                        newPath = append(newPath, node)
+                        queue = append(queue, newPath)
+                    }
+                }
+            }
+        }
+    }
+
+    // No valid recipe found
+    return nil
+}
+
 // BFS FROM TARGET WITH HEURISTICS (FAST)
-func HeuristicBFS(target string, elements map[string]models.Element, elementTier map[string]int) []models.Node {   
+func HeuristicReverseBFS(target string, elements map[string]models.Element, elementTier map[string]int) []models.Node {   
     queue := [][]models.Node{}
     if elementTier[target] == 0 {
         // Return something
@@ -163,9 +242,7 @@ func HeuristicBFS(target string, elements map[string]models.Element, elementTier
                 return expansions[0]
             }
         
-            for _, path := range expansions {
-                queue = append(queue, path)
-            }
+            queue = append(queue, expansions...)
         }
 
     return nil
@@ -173,12 +250,12 @@ func HeuristicBFS(target string, elements map[string]models.Element, elementTier
 
 // HELPER FUNCTIONS
 func BFSHandleTarget(target string, path []models.Node, elements map[string]models.Element, elementTier map[string]int) [][]models.Node {
-    fmt.Println("🔍 Attempting to expand full path:")
-    for i := len(path) - 1; i >= 0; i-- {
-        node := path[i]
-        fmt.Printf("  %d. %s ← %s + %s\n", len(path)-i, node.Name, node.Ingredient1, node.Ingredient2)
-    }
-    fmt.Println()
+    // fmt.Println("🔍 Attempting to expand full path:")
+    // for i := len(path) - 1; i >= 0; i-- {
+    //     node := path[i]
+    //     fmt.Printf("  %d. %s ← %s + %s\n", len(path)-i, node.Name, node.Ingredient1, node.Ingredient2)
+    // }
+    // fmt.Println()
 
     nameSet := make(map[string]bool)
     for _, node := range path {
