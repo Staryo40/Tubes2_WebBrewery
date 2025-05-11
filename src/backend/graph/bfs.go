@@ -3,6 +3,8 @@ package graph
 import (
 	"backend/models"
 	"backend/utils"
+	"sort"
+	"strings"
 	// "fmt"
 	// "fmt"
 )
@@ -253,163 +255,117 @@ func HeuristicReverseBFS(target string, elements map[string]models.Element, elem
 }
 
 // BIDIRECTIONAL
-func HeuristicBidirectionalBFS(target string, elementList map[string]models.Element, elementTier map[string]int, seed int) []models.Node {
+func HeuristicBidirectionalBFS(target string, elements map[string]models.Element, elementTier map[string]int, seed int) []models.Node {
 	if elementTier[target] == 0 {
 		return []models.Node{{Name: target}}
 	}
 
-	type PathMap map[string][]models.Node
-
-	forwardQueue := []string{}
-	reverseQueue := []string{}
-
-	forwardVisited := make(map[string]bool)
-	reverseVisited := make(map[string]bool)
-
-	forwardPaths := make(PathMap)
-	reversePaths := make(PathMap)
-
-	// Initialize forward BFS from base elements
-	for name, tier := range elementTier {
-		if tier == 0 {
-			forwardQueue = append(forwardQueue, name)
-			forwardVisited[name] = true
-			forwardPaths[name] = []models.Node{}
+    // Initialize Forward Queue
+	forwardQueue := [][]models.Node{}
+	for _, el := range elements{
+		for _, recipe := range el.Recipes{
+			if len(recipe) == 2 {
+				if elementTier[recipe[0]] == 0 && elementTier[recipe[1]] == 0 {
+					newNode := models.Node{
+						Name: el.Name,
+						Ingredient1: recipe[0],
+						Ingredient2: recipe[1],
+					}
+					entry := []models.Node{newNode}
+					forwardQueue = append(forwardQueue, entry)
+				}
+			}
 		}
 	}
 
-	// Initialize reverse BFS from recipes that create the target
-	var targetRecipes []models.Node
-	for _, entry := range elementList {
-		if entry.Name != target {
-			continue
-		}
-		for _, recipe := range entry.Recipes {
-			if len(recipe) == 2 && elementTier[recipe[0]] < elementTier[target] && elementTier[recipe[1]] < elementTier[target]{
-				targetRecipes = append(targetRecipes, models.Node{
-					Name:        target,
+    // Initialize Reverse Queue
+    reverseQueue := [][]models.Node{}
+	for _, recipe := range elements[target].Recipes {
+		if len(recipe) == 2 {
+			if elementTier[recipe[0]] < elementTier[target] && elementTier[recipe[1]] < elementTier[target] {
+				newNode := models.Node{
+					Name: target,
 					Ingredient1: recipe[0],
 					Ingredient2: recipe[1],
-				})
+				}
+				entry := []models.Node{newNode}
+				reverseQueue = append(reverseQueue, entry)
 			}
 		}
 	}
 
-	for _, node := range targetRecipes {
-		for _, ing := range []string{node.Ingredient1, node.Ingredient2} {
-			if !reverseVisited[ing] {
-				reverseQueue = append(reverseQueue, ing)
-				reverseVisited[ing] = true
-				reversePaths[ing] = []models.Node{node}
-			}
-		}
-	}
-
-	var mergedPaths [][]models.Node
+	results := [][]models.Node{}
+    meetingLimit := 10
 	for len(forwardQueue) > 0 && len(reverseQueue) > 0 {
+        // CHECK FOR MERGE
+        result := BidirectionalBFSHelper(forwardQueue, reverseQueue, target, elements, elementTier, seed, results, meetingLimit)
+		if result != nil {
+			return result
+		}
+
 		// FORWARD STEP
-		fq := len(forwardQueue)
-		for i := 0; i < fq; i++ {
-			curr := forwardQueue[0]
-			forwardQueue = forwardQueue[1:]
+        currentForward := forwardQueue[0]
+		forwardQueue = forwardQueue[1:] 
 
-			for _, entry := range elementList {
-				for _, recipe := range entry.Recipes {
-					if len(recipe) != 2 || forwardVisited[entry.Name] {
-						continue
+		last := currentForward[len(currentForward)-1]
+		for _, el := range elements {
+			for _, recipe := range el.Recipes {
+				if len(recipe) != 2 || elementTier[el.Name] >= elementTier[target] {
+					continue
+				}
+				if (recipe[0] == last.Name || recipe[1] == last.Name) && elementTier[recipe[0]] <= elementTier[target] && elementTier[recipe[1]] <= elementTier[target] {
+					newNode := models.Node{
+						Name:        el.Name,
+						Ingredient1: recipe[0],
+						Ingredient2: recipe[1],
 					}
-                    if elementTier[recipe[0]] >= elementTier[entry.Name] || elementTier[recipe[1]] >= elementTier[entry.Name] {
-                        continue
-                    }
-					if (recipe[0] == curr && forwardVisited[recipe[1]]) || (recipe[1] == curr && forwardVisited[recipe[0]]) {   
-                        other := recipe[1]
-                        if recipe[1] == curr {
-                            other = recipe[0]
-                        }
-                        if elementTier[other] >= elementTier[entry.Name] {
-                            continue
-                        }
-						newNode := models.Node{
-							Name:        entry.Name,
-							Ingredient1: recipe[0],
-							Ingredient2: recipe[1],
-						}
-						merged := mergePaths(forwardPaths[recipe[0]], forwardPaths[recipe[1]])
-						merged = append(merged, newNode)
-						forwardPaths[entry.Name] = merged
-						forwardVisited[entry.Name] = true
-						forwardQueue = append(forwardQueue, entry.Name)
-
-						if reverseVisited[entry.Name] {
-							final := mergePaths(merged, reversePaths[entry.Name])
-							mergedPaths = append(mergedPaths, final)
-							if len(mergedPaths) > seed {
-								resolved := mergedPaths[seed]
-                                for !IsFullyExpanded(resolved, elementTier){
-                                    resolved = HeuristicReverseBFSHelper(target, resolved, elementList, elementTier)[0]
-                                }
-                                
-                                return resolved
-                            }
-						}
-					}
+					newPath := append([]models.Node{}, currentForward...)
+					newPath = append(newPath, newNode)
+					forwardQueue = append(forwardQueue, newPath) 
 				}
 			}
 		}
 
 		// REVERSE STEP
-		rq := len(reverseQueue)
-		for i := 0; i < rq; i++ {
-			curr := reverseQueue[0]
-			reverseQueue = reverseQueue[1:]
+		currentReverse := reverseQueue[0]
+		reverseQueue = reverseQueue[1:] // pop from end
 
-			for _, entry := range elementList {
-				if entry.Name != curr {
+		nameSet := make(map[string]bool)
+		for _, node := range currentReverse {
+			nameSet[node.Name] = true
+		}
+
+		var missing string
+		for _, node := range currentReverse {
+			if elementTier[node.Ingredient1] != 0 && !nameSet[node.Ingredient1] {
+				missing = node.Ingredient1
+				break
+			}
+			if elementTier[node.Ingredient2] != 0 && !nameSet[node.Ingredient2] {
+				missing = node.Ingredient2
+				break
+			}
+		}
+
+		if missing != "" {
+			for _, recipe := range elements[missing].Recipes {
+				if len(recipe) != 2 || elementTier[recipe[0]] >= elementTier[missing] || elementTier[recipe[1]] >= elementTier[missing] {
 					continue
 				}
-				for _, recipe := range entry.Recipes {
-					if len(recipe) != 2 {
-						continue
-					}
-                    for _, ing := range recipe {
-                        if reverseVisited[ing] && elementTier[ing] >= elementTier[entry.Name] {
-                            continue
-                        }
-                    }
-					node := models.Node{
-						Name:        entry.Name,
-						Ingredient1: recipe[0],
-						Ingredient2: recipe[1],
-					}
-					for _, ing := range []string{node.Ingredient1, node.Ingredient2} {
-						if !reverseVisited[ing] {
-							reverseVisited[ing] = true
-							reversePaths[ing] = append([]models.Node{node}, reversePaths[curr]...)
-							reverseQueue = append(reverseQueue, ing)
 
-							if forwardVisited[ing] {
-								final := mergePaths(forwardPaths[ing], reversePaths[ing])
-								mergedPaths = append(mergedPaths, final)
-								if len(mergedPaths) > seed {
-                                    resolved := mergedPaths[seed]
-                                    for !IsFullyExpanded(resolved, elementTier){
-                                        resolved = HeuristicReverseBFSHelper(target, resolved, elementList, elementTier)[0]
-                                    }
-                                    
-									return resolved
-								}
-							}
-						}
-					}
+				newNode := models.Node{
+					Name:        missing,
+					Ingredient1: recipe[0],
+					Ingredient2: recipe[1],
 				}
+				newPath := append([]models.Node{newNode}, currentReverse...) 
+				reverseQueue = append(reverseQueue, newPath)
 			}
 		}
 	}
 
 	return nil
 }
-
-
 
 // HELPER FUNCTIONS
 func BFSHandleTarget(target string, path []models.Node, elements map[string]models.Element, elementTier map[string]int) [][]models.Node {
@@ -472,65 +428,6 @@ func BFSHandleTarget(target string, path []models.Node, elements map[string]mode
     }
 
     return expandedPaths
-}
-
-func BFSHandleTargetSeeded(target string, path []models.Node, elements map[string]models.Element, elementTier map[string]int, seed int) []models.Node {
-	nameSet := make(map[string]bool)
-	producedBy := make(map[string]models.Node)
-	for _, node := range path {
-		nameSet[node.Name] = true
-		producedBy[node.Name] = node
-	}
-
-	// Identify first missing ingredient that is not in the current path
-	var missing string
-	for _, node := range path {
-		if elementTier[node.Ingredient1] != 0 && !nameSet[node.Ingredient1] {
-			missing = node.Ingredient1
-			break
-		}
-		if elementTier[node.Ingredient2] != 0 && !nameSet[node.Ingredient2] {
-			missing = node.Ingredient2
-			break
-		}
-	}
-
-	if missing == "" {
-		return path
-	}
-
-	validCount := 0
-	for _, recipe := range elements[missing].Recipes {
-		if len(recipe) != 2 {
-			continue
-		}
-		if elementTier[recipe[0]] > elementTier[missing] || elementTier[recipe[1]] > elementTier[missing] {
-			continue
-		}
-
-		newNode := models.Node{
-			Name:        missing,
-			Ingredient1: recipe[0],
-			Ingredient2: recipe[1],
-		}
-
-		if existing, exists := producedBy[newNode.Name]; exists {
-			if (existing.Ingredient1 == newNode.Ingredient1 && existing.Ingredient2 == newNode.Ingredient2) ||
-				(existing.Ingredient1 == newNode.Ingredient2 && existing.Ingredient2 == newNode.Ingredient1) {
-				continue
-			}
-		}
-
-		if validCount == seed {
-            // fmt.Println(newNode.Ingredient1 + " + " + newNode.Ingredient2 + " -> " + newNode.Name)
-			extended := append([]models.Node{newNode}, path...)
-			return extended
-		}
-		validCount++
-	}
-
-	// No valid recipe found for this seed
-	return path
 }
 
 func HeuristicForwardBFSHelper(target string, availableRecipe []models.Node, elements map[string]models.Element, elementTier map[string]int) []models.Node {
@@ -622,50 +519,209 @@ func HeuristicReverseBFSHelper(target string, path []models.Node, elements map[s
     return expandedPaths
 }
 
-func mergePaths(forward []models.Node, reverse []models.Node) []models.Node {
-	seen := make(map[string]bool)
-	merged := []models.Node{}
-	var targetNode *models.Node
-
-	for _, n := range forward {
-		key := ComboKey(n.Name, n.Ingredient1, n.Ingredient2)
-		if !seen[key] {
-			merged = append(merged, n)
-			seen[key] = true
-		}
-	}
-	for i, n := range reverse {
-		key := ComboKey(n.Name, n.Ingredient1, n.Ingredient2)
-		if !seen[key] {
-			if i == len(reverse)-1 {
-				targetNode = &n
-			} else {
-				merged = append(merged, n)
-			}
-			seen[key] = true
-		}
-	}
-	if targetNode != nil {
-		merged = append(merged, *targetNode)
-	}
-	return merged
+func BidirectionalBFSHelper(forwardQueue [][]models.Node, reverseQueue [][]models.Node, target string, elements map[string]models.Element, elementTier map[string]int, 
+    seed int, results [][]models.Node, meetingLimit int) []models.Node {
+        for _, fpath := range forwardQueue {
+            forwardLast := fpath[len(fpath)-1]
+    
+            for _, rpath := range reverseQueue {
+                for _, rnode := range rpath {
+                    if forwardLast.Name == rnode.Name || forwardLast.Name == rnode.Ingredient1 || forwardLast.Name == rnode.Ingredient2 {
+    
+                        merged := MergePathsSmart(fpath, rpath, target, elementTier, elements)
+    
+                        // Ensure target is last
+                        if merged[len(merged)-1].Name != target {
+                            for _, recipe := range elements[target].Recipes {
+                                if len(recipe) == 2 && elementTier[recipe[0]] <= elementTier[target] && elementTier[recipe[1]] <= elementTier[target] {
+    
+                                    nameSet := make(map[string]bool)
+                                    for _, n := range merged {
+                                        nameSet[n.Name] = true
+                                    }
+    
+                                    if nameSet[recipe[0]] && nameSet[recipe[1]] {
+                                        merged = append(merged, models.Node{
+                                            Name:        target,
+                                            Ingredient1: recipe[0],
+                                            Ingredient2: recipe[1],
+                                        })
+                                        break
+                                    }
+                                }
+                            }
+                        }
+    
+                        // Expand until fully resolved
+                        expanded := merged
+                        resolvedSeed := seed
+                        for !IsFullyExpanded(expanded, elementTier) {
+                            expanded = BFSExpandMissing(target, expanded, elements, elementTier, resolvedSeed)
+                            resolvedSeed++
+                        }
+    
+                        // Deduplication
+                        comboSeen := make(map[string]bool)
+                        deduped := []models.Node{}
+                        for _, node := range expanded {
+                            key := ComboKey(node.Name, node.Ingredient1, node.Ingredient2)
+                            if !comboSeen[key] {
+                                deduped = append(deduped, node)
+                                comboSeen[key] = true
+                            }
+                        }
+    
+                        alreadyExists := false
+                        for _, r := range results {
+                            if utils.PathsEqual(r, deduped) {
+                                alreadyExists = true
+                                break
+                            }
+                        }
+    
+                        if !alreadyExists {
+                            results = append(results, deduped)
+                            if len(results) >= meetingLimit {
+                                index := seed % len(results)
+                                return results[index]
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    
+        if len(results) > 0 {
+            return results[seed%len(results)]
+        }
+    
+        return nil
 }
 
+func BFSExpandMissing(target string, path []models.Node, elements map[string]models.Element, elementTier map[string]int, seed int) []models.Node {
+    nameSet := make(map[string]bool)
+	for _, node := range path {
+		nameSet[node.Name] = true
+	}
+
+	var missing string
+	for _, node := range path {
+		if elementTier[node.Ingredient1] != 0 && !nameSet[node.Ingredient1] {
+			missing = node.Ingredient1
+			break
+		}
+		if elementTier[node.Ingredient2] != 0 && !nameSet[node.Ingredient2] {
+			missing = node.Ingredient2
+			break
+		}
+	}
+
+	if missing == "" {
+		return path
+	}
+
+	expansion := BFSGetMissingPath(missing, elements, elementTier, seed)
+	if expansion == nil {
+		return path 
+	}
+
+	return append(expansion, path...)
+}
+
+func BFSGetMissingPath(current string, elements map[string]models.Element, elementTier map[string]int, seed int) []models.Node {
+	type Path = []models.Node
+	queue := []Path{}
+
+	// Initialize with all valid recipes for the target
+	el, exists := elements[current]
+	if !exists || len(el.Recipes) == 0 {
+		return nil
+	}
+
+    sort.Slice(el.Recipes, func(i, j int) bool {
+		return strings.Join(el.Recipes[i], "+") < strings.Join(el.Recipes[j], "+")
+	})
+
+	for i, recipe := range el.Recipes {
+		if len(recipe) != 2 {
+			continue
+		}
+		if elementTier[recipe[0]] >= elementTier[current] || elementTier[recipe[1]] >= elementTier[current] {
+			continue
+		}
+		if i != seed%len(el.Recipes) {
+			continue // Only pick one per seed
+		}
+		node := models.Node{
+			Name:        current,
+			Ingredient1: recipe[0],
+			Ingredient2: recipe[1],
+		}
+		queue = append(queue, []models.Node{node})
+		break
+	}
+
+    comboSeen := make(map[string]bool) 
+
+	for len(queue) > 0 {
+		path := queue[0]
+		queue = queue[1:]
+
+		if IsFullyExpanded(path, elementTier) {
+			return path
+		}
+
+		// Find first missing ingredient in path
+		nameSet := make(map[string]bool)
+		for _, node := range path {
+			nameSet[node.Name] = true
+		}
+
+		var missing string
+		for _, node := range path {
+			if elementTier[node.Ingredient1] != 0 && !nameSet[node.Ingredient1] {
+				missing = node.Ingredient1
+				break
+			}
+			if elementTier[node.Ingredient2] != 0 && !nameSet[node.Ingredient2] {
+				missing = node.Ingredient2
+				break
+			}
+		}
+
+		if missing != "" {
+			missingEl := elements[missing]
+			sort.Slice(missingEl.Recipes, func(i, j int) bool {
+				return strings.Join(missingEl.Recipes[i], "+") < strings.Join(missingEl.Recipes[j], "+")
+			}) 
+
+			for _, recipe := range missingEl.Recipes {
+				if len(recipe) != 2 || elementTier[recipe[0]] >= elementTier[missing] || elementTier[recipe[1]] >= elementTier[missing] {
+					continue
+				}
+				newNode := models.Node{
+					Name:        missing,
+					Ingredient1: recipe[0],
+					Ingredient2: recipe[1],
+				}
+				key := ComboKey(newNode.Name, newNode.Ingredient1, newNode.Ingredient2)
+				if comboSeen[key] {
+					continue
+				}
+				comboSeen[key] = true
+				newPath := append([]models.Node{newNode}, path...)
+				queue = append(queue, newPath)
+			}
+		}
+	}
+
+	return nil // no valid path found
+}
 
 func IsFullyExpanded(path []models.Node, elementTier map[string]int) bool {
     if len(path) == 0 || path == nil {
         return false
     }
-
-    // fmt.Println("🔎 Checking path for full expansion:")
-	// for i, node := range path {
-	// 	fmt.Printf("%d. %s (%d) ← %s (%d) + %s (%d)\n",
-	// 		i+1,
-	// 		node.Name, elementTier[node.Name],
-	// 		node.Ingredient1, elementTier[node.Ingredient1],
-	// 		node.Ingredient2, elementTier[node.Ingredient2],
-	// 	)
-	// }
 
     nameSet := make(map[string]bool)
     for _, node := range path {

@@ -193,7 +193,7 @@ func LooseReverseDFSHelper(current string, seed int, elements map[string]models.
 	return false
 }
 
-func ReverseDFSHelper(current string, seed int, elements map[string]models.Element,elementTier map[string]int, stack *[]models.Node) bool {
+func ReverseDFSHelper(current string, seed int, elements map[string]models.Element, elementTier map[string]int, stack *[]models.Node) bool {
 	if elementTier[current] == 0 {
 		return true
 	}

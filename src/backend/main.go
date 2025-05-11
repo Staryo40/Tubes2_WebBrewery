@@ -28,11 +28,11 @@ func main() {
 	log.Fatal(http.ListenAndServe(":8080", nil))
 
 	// TESTS
-	// target := "Brick"
+	// target := "Aquarium"
 	// start := time.Now()
 
-	// // result := graph.HeuristicReverseBFS(target, elements, tiers, 2)
-	// result := graph.BidirectionalDFS(target, elements, tiers, 2)
+	// result := graph.HeuristicReverseBFS(target, elements, tiers, 2)
+	// // result := graph.BidirectionalDFS(target, elements, tiers, 0)
 	// elapsed := time.Since(start)
 	// if result == nil {
 	// 	fmt.Println("Kok kosong")
