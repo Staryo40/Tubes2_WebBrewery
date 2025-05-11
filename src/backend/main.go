@@ -27,7 +27,7 @@ func main() {
 	// log.Println("Server is running at http://localhost:8080")
 	// log.Fatal(http.ListenAndServe(":8080", nil))
 
-	target := "Clay"
+	target := "Grilled cheese"
 	start := time.Now()
 	elapsed := time.Since(start)
 
