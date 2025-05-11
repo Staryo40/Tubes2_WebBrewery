@@ -27,12 +27,12 @@ func main() {
 	// log.Println("Server is running at http://localhost:8080")
 	// log.Fatal(http.ListenAndServe(":8080", nil))
 
-	target := "Grilled cheese"
+	target := "Butterfly"
 	start := time.Now()
 	elapsed := time.Since(start)
 
-	result := graph.HeuristicBidirectionalBFS(target, utils.ConvertToElementList(elements), tiers, 0)
-	// result := graph.ReverseDFS(target, elements, tiers, 2, 2, true)
+	// result := graph.HeuristicReverseBFS(target, elements, tiers, 2)
+	result := graph.BidirectionalDFS(target, elements, tiers, 1)
 	if result == nil {
 		fmt.Println("Kok kosong")
 	}

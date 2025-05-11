@@ -2,11 +2,11 @@ package graph
 
 import (
     "backend/models"
-    // "backend/utils"
+    "backend/utils"
     // "fmt"
 )
 
-func ReverseDFS(target string, elements map[string]models.Element, elementTier map[string]int, recipe int, num int, strict bool) []models.Node {
+func ReverseDFS(target string, elements map[string]models.Element, elementTier map[string]int, seed int, strict bool) []models.Node {
 	var stack []models.Node
 
 	if elementTier[target] == 0{
@@ -21,9 +21,9 @@ func ReverseDFS(target string, elements map[string]models.Element, elementTier m
 
 	var ok bool
 	if strict {
-		ok = ReverseDFSHelper(target, recipe, num, elements, elementTier, &stack)
+		ok = ReverseDFSHelper(target, seed, elements, elementTier, &stack)
 	} else {
-		ok = LooseReverseDFSHelper(target, recipe, num, elements, elementTier, &stack)
+		ok = LooseReverseDFSHelper(target, seed, elements, elementTier, &stack)
 	}
 
 	if ok {
@@ -33,7 +33,118 @@ func ReverseDFS(target string, elements map[string]models.Element, elementTier m
 	return nil
 }
 
-func LooseReverseDFSHelper(current string, r int, n int, elements map[string]models.Element, elementTier map[string]int, stack *[]models.Node) bool {
+func BidirectionalDFS(target string, elements map[string]models.Element, elementTier map[string]int, seed int) []models.Node {
+	if elementTier[target] == 0 {
+		return []models.Node{{Name: target}}
+	}
+
+	// Initiate forward stack
+	forwardStack := [][]models.Node{}
+	for _, el := range elements{
+		for _, recipe := range el.Recipes{
+			if len(recipe) == 2 {
+				if elementTier[recipe[0]] == 0 && elementTier[recipe[1]] == 0 {
+					newNode := models.Node{
+						Name: el.Name,
+						Ingredient1: recipe[0],
+						Ingredient2: recipe[1],
+					}
+					entry := []models.Node{newNode}
+					forwardStack = append(forwardStack, entry)
+				}
+			}
+		}
+	}
+
+	// Initiate reverse stack
+	reverseStack := [][]models.Node{}
+	for _, recipe := range elements[target].Recipes {
+		if len(recipe) == 2 {
+			if elementTier[recipe[0]] < elementTier[target] && elementTier[recipe[1]] < elementTier[target] {
+				newNode := models.Node{
+					Name: target,
+					Ingredient1: recipe[0],
+					Ingredient2: recipe[1],
+				}
+				entry := []models.Node{newNode}
+				reverseStack = append(reverseStack, entry)
+			}
+		}
+	}
+
+	results := [][]models.Node{}
+	meetingLimit := 10
+	for len(forwardStack) > 0 && len(reverseStack) > 0{
+		result := BidirectionalDFSHelper(forwardStack, reverseStack, target, elements, elementTier, seed, results, meetingLimit)
+		if result != nil {
+			return result
+		}
+
+		// === Forward DFS Expansion ===
+		currentForward := forwardStack[len(forwardStack)-1]
+		forwardStack = forwardStack[:len(forwardStack)-1] 
+
+		last := currentForward[len(currentForward)-1]
+		for _, el := range elements {
+			for _, recipe := range el.Recipes {
+				if len(recipe) != 2 || elementTier[el.Name] >= elementTier[target] {
+					continue
+				}
+				if (recipe[0] == last.Name || recipe[1] == last.Name) && elementTier[recipe[0]] <= elementTier[target] && elementTier[recipe[1]] <= elementTier[target] {
+					newNode := models.Node{
+						Name:        el.Name,
+						Ingredient1: recipe[0],
+						Ingredient2: recipe[1],
+					}
+					newPath := append([]models.Node{}, currentForward...)
+					newPath = append(newPath, newNode)
+					forwardStack = append(forwardStack, newPath) 
+				}
+			}
+		}
+
+		// === Reverse DFS Expansion ===
+		currentReverse := reverseStack[len(reverseStack)-1]
+		reverseStack = reverseStack[:len(reverseStack)-1] // pop from end
+
+		nameSet := make(map[string]bool)
+		for _, node := range currentReverse {
+			nameSet[node.Name] = true
+		}
+
+		var missing string
+		for _, node := range currentReverse {
+			if elementTier[node.Ingredient1] != 0 && !nameSet[node.Ingredient1] {
+				missing = node.Ingredient1
+				break
+			}
+			if elementTier[node.Ingredient2] != 0 && !nameSet[node.Ingredient2] {
+				missing = node.Ingredient2
+				break
+			}
+		}
+
+		if missing != "" {
+			for _, recipe := range elements[missing].Recipes {
+				if len(recipe) != 2 || elementTier[recipe[0]] >= elementTier[missing] || elementTier[recipe[1]] >= elementTier[missing] {
+					continue
+				}
+
+				newNode := models.Node{
+					Name:        missing,
+					Ingredient1: recipe[0],
+					Ingredient2: recipe[1],
+				}
+				newPath := append([]models.Node{newNode}, currentReverse...) 
+				reverseStack = append(reverseStack, newPath)
+			}
+		}
+	}
+
+	return nil
+}
+
+func LooseReverseDFSHelper(current string, seed int, elements map[string]models.Element, elementTier map[string]int, stack *[]models.Node) bool {
 	if elementTier[current] == 0 {
 		return true
 	}
@@ -54,7 +165,7 @@ func LooseReverseDFSHelper(current string, r int, n int, elements map[string]mod
 		return false
 	}
 
-	recipeIndex := r % len(validRecipe)
+	recipeIndex := seed % len(validRecipe)
 	chosen := validRecipe[recipeIndex]
 
 	node := models.Node{
@@ -66,12 +177,12 @@ func LooseReverseDFSHelper(current string, r int, n int, elements map[string]mod
 	// Still use strict logic for sub-ingredients
 	ok1 := true
 	if elementTier[chosen[0]] != 0 {
-		ok1 = ReverseDFSHelper(chosen[0], r+1, n+1, elements, elementTier, stack)
+		ok1 = ReverseDFSHelper(chosen[0], seed+1, elements, elementTier, stack)
 	}
 
 	ok2 := true
 	if elementTier[chosen[1]] != 0 {
-		ok2 = ReverseDFSHelper(chosen[1], r+2, n+2, elements, elementTier, stack)
+		ok2 = ReverseDFSHelper(chosen[1], seed+2, elements, elementTier, stack)
 	}
 
 	if ok1 && ok2 {
@@ -82,7 +193,7 @@ func LooseReverseDFSHelper(current string, r int, n int, elements map[string]mod
 	return false
 }
 
-func ReverseDFSHelper(current string,r int,n int,elements map[string]models.Element,elementTier map[string]int, stack *[]models.Node) bool {
+func ReverseDFSHelper(current string, seed int, elements map[string]models.Element,elementTier map[string]int, stack *[]models.Node) bool {
 	if elementTier[current] == 0 {
 		return true
 	}
@@ -104,7 +215,7 @@ func ReverseDFSHelper(current string,r int,n int,elements map[string]models.Elem
 		return false
 	}
 
-	recipeIndex := (r + n) % len(validRecipe)
+	recipeIndex := seed % len(validRecipe)
 	chosen := validRecipe[recipeIndex]
 
 	node := models.Node{
@@ -116,12 +227,12 @@ func ReverseDFSHelper(current string,r int,n int,elements map[string]models.Elem
 	// Recurse only if ingredients are not base
 	ok1 := true
 	if elementTier[chosen[0]] != 0 && !IsInStack(chosen[0], stack) {
-		ok1 = ReverseDFSHelper(chosen[0], r+1, n+1, elements, elementTier, stack)
+		ok1 = ReverseDFSHelper(chosen[0], seed+1, elements, elementTier, stack)
 	}
 
 	ok2 := true
 	if elementTier[chosen[1]] != 0 && !IsInStack(chosen[1], stack) {
-		ok2 = ReverseDFSHelper(chosen[1], r+2, n+2, elements, elementTier, stack)
+		ok2 = ReverseDFSHelper(chosen[1], seed+1, elements, elementTier, stack)
 	}
 
 	if ok1 && ok2 {
@@ -132,6 +243,199 @@ func ReverseDFSHelper(current string,r int,n int,elements map[string]models.Elem
 	return false
 }
 
+func BidirectionalDFSHelper(forwardStack [][]models.Node, reverseStack [][]models.Node, target string, elements map[string]models.Element, elementTier map[string]int,
+	seed int, results [][]models.Node, meetingLimit int) []models.Node {
+	for _, fpath := range forwardStack {
+		forwardLast := fpath[len(fpath)-1]
+
+		for _, rpath := range reverseStack {
+			for _, rnode := range rpath {
+				if forwardLast.Name == rnode.Name || forwardLast.Name == rnode.Ingredient1 || forwardLast.Name == rnode.Ingredient2 {
+
+					merged := MergePathsSmart(fpath, rpath, target, elementTier, elements)
+
+					// Ensure target is last
+					if merged[len(merged)-1].Name != target {
+						for _, recipe := range elements[target].Recipes {
+							if len(recipe) == 2 && elementTier[recipe[0]] <= elementTier[target] && elementTier[recipe[1]] <= elementTier[target] {
+
+								nameSet := make(map[string]bool)
+								for _, n := range merged {
+									nameSet[n.Name] = true
+								}
+
+								if nameSet[recipe[0]] && nameSet[recipe[1]] {
+									merged = append(merged, models.Node{
+										Name:        target,
+										Ingredient1: recipe[0],
+										Ingredient2: recipe[1],
+									})
+									break
+								}
+							}
+						}
+					}
+
+					// Expand until fully resolved
+					expanded := merged
+					resolvedSeed := seed
+					for !IsFullyExpanded(expanded, elementTier) {
+						expanded = DFSExpandMissing(target, expanded, elements, elementTier, resolvedSeed)
+						resolvedSeed++
+					}
+
+					// Deduplication
+					comboSeen := make(map[string]bool)
+					deduped := []models.Node{}
+					for _, node := range expanded {
+						key := ComboKey(node.Name, node.Ingredient1, node.Ingredient2)
+						if !comboSeen[key] {
+							deduped = append(deduped, node)
+							comboSeen[key] = true
+						}
+					}
+
+					alreadyExists := false
+					for _, r := range results {
+						if utils.PathsEqual(r, deduped) {
+							alreadyExists = true
+							break
+						}
+					}
+
+					if !alreadyExists {
+						results = append(results, deduped)
+						if len(results) >= meetingLimit {
+							index := seed % len(results)
+							return results[index]
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// No path selected yet
+	if len(results) > 0 {
+		return results[seed%len(results)]
+	}
+
+	return nil
+}
+
+func MergePathsSmart(fpath []models.Node, rpath []models.Node, target string, elementTier map[string]int, elements map[string]models.Element) []models.Node {
+	merged := []models.Node{}
+	seen := make(map[string]bool)
+
+	if len(fpath) > 0 {
+		merged = append(merged, fpath[0])
+		seen[fpath[0].Name] = true
+	}
+
+	if len(rpath) > 0 {
+		last := rpath[len(rpath)-1]
+		if !seen[last.Name] {
+			merged = append(merged, last)
+			seen[last.Name] = true
+		}
+
+		if last.Ingredient1 == fpath[0].Name || last.Ingredient2 == fpath[0].Name {
+			return merged
+		}
+	}
+
+	// Step 3: Interleave from fpath[1:], rpath[:-1]
+	i, j := 1, len(rpath)-2
+	for i < len(fpath) || j >= 0 {
+		if i < len(fpath) {
+			node := fpath[i]
+			if seen[node.Name] {
+				return merged
+			} else {
+				if inIngredient(node, merged){
+					insertIndex := max((len(rpath)-j)-1, 1)
+					merged = utils.InsertAt(merged, insertIndex, node)
+					return merged
+				} else {
+					insertIndex := max((len(rpath)-j)-1, 1)
+					merged = utils.InsertAt(merged, insertIndex, node)
+					seen[node.Name] = true
+				}
+			}
+			i++
+		}
+		if j >= 0 {
+			node := rpath[j]
+			if seen[node.Name] {
+				return merged
+			} else {
+				if ingredientAvailable(node, merged){
+					insertIndex := min(i, len(merged))
+					merged = utils.InsertAt(merged, insertIndex, node)
+					return merged
+				} else {
+					insertIndex := min(i, len(merged))
+					merged = utils.InsertAt(merged, insertIndex, node)
+					seen[node.Name] = true
+				}
+			}
+			j--
+		}
+	}
+
+	return merged
+}
+
+func inIngredient(node models.Node, path []models.Node) bool {
+	for _, p := range path {
+		if p.Ingredient1 == node.Name || p.Ingredient2 == node.Name {
+			return true
+		}
+	}
+	return false
+}
+
+func ingredientAvailable(node models.Node, path []models.Node) bool {
+	ing1 := node.Ingredient1
+	ing2 := node.Ingredient2
+	for _, el := range path{
+		if el.Name == ing1 || el.Name == ing2 {
+			return true
+		}
+	}
+	return false
+}
+
+func DFSExpandMissing(target string, path []models.Node, elements map[string]models.Element, elementTier map[string]int, seed int) []models.Node {
+	nameSet := make(map[string]bool)
+	for _, node := range path {
+		nameSet[node.Name] = true
+	}
+
+	var missing string
+	for _, node := range path {
+		if elementTier[node.Ingredient1] != 0 && !nameSet[node.Ingredient1] {
+			missing = node.Ingredient1
+			break
+		}
+		if elementTier[node.Ingredient2] != 0 && !nameSet[node.Ingredient2] {
+			missing = node.Ingredient2
+			break
+		}
+	}
+
+	if missing == "" {
+		return path
+	}
+
+	var expansion []models.Node
+	ok := ReverseDFSHelper(missing, seed, elements, elementTier, &expansion)
+	if !ok {
+		return path 
+	}
+
+	return append(expansion, path...)
+}
 // HELPER
 func IsInStack(name string, stack *[]models.Node) bool {
 	for _, existing := range *stack {
@@ -141,3 +445,4 @@ func IsInStack(name string, stack *[]models.Node) bool {
 	}
 	return false
 }
+

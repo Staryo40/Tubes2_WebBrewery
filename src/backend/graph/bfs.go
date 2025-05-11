@@ -350,7 +350,7 @@ func HeuristicBidirectionalBFS(target string, elementList []models.ElementEntry,
                                 }
                                 
                                 return resolved
-                        }
+                            }
 						}
 					}
 				}

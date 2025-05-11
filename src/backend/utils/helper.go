@@ -147,3 +147,14 @@ func WriteGraphvizImage(nodes []models.Node, dotPath, pngPath string) error {
     fmt.Println("✅ PNG image generated at:", pngPath)
     return nil
 }
+
+func InsertAt(path []models.Node, index int, node models.Node) []models.Node {
+	if index < 0 {
+		index = 0
+	}
+	if index > len(path) {
+		index = len(path)
+	}
+	path = append(path[:index], append([]models.Node{node}, path[index:]...)...)
+	return path
+}
