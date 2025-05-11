@@ -84,6 +84,12 @@ const Visualization = () => {
 
         }
         const convertPathToTreeData = (path) => {
+
+          // Kasus tier 0
+          const targetNode = path[path.length -1];
+          if (!targetNode.Ingredient1 && !targetNode.Ingredient2) {
+            return [{id: targetNode.Name, name: targetNode.Name }]
+          }
           const nodeMap = new Map();
           const createdNodes = new Map();
                 
