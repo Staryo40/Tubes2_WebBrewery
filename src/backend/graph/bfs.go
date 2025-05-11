@@ -253,7 +253,7 @@ func HeuristicReverseBFS(target string, elements map[string]models.Element, elem
 }
 
 // BIDIRECTIONAL
-func HeuristicBidirectionalBFS(target string, elementList []models.ElementEntry, elementTier map[string]int, seed int) []models.Node {
+func HeuristicBidirectionalBFS(target string, elementList map[string]models.Element, elementTier map[string]int, seed int) []models.Node {
 	if elementTier[target] == 0 {
 		return []models.Node{{Name: target}}
 	}
@@ -284,7 +284,7 @@ func HeuristicBidirectionalBFS(target string, elementList []models.ElementEntry,
 		if entry.Name != target {
 			continue
 		}
-		for _, recipe := range entry.Element.Recipes {
+		for _, recipe := range entry.Recipes {
 			if len(recipe) == 2 && elementTier[recipe[0]] < elementTier[target] && elementTier[recipe[1]] < elementTier[target]{
 				targetRecipes = append(targetRecipes, models.Node{
 					Name:        target,
@@ -314,7 +314,7 @@ func HeuristicBidirectionalBFS(target string, elementList []models.ElementEntry,
 			forwardQueue = forwardQueue[1:]
 
 			for _, entry := range elementList {
-				for _, recipe := range entry.Element.Recipes {
+				for _, recipe := range entry.Recipes {
 					if len(recipe) != 2 || forwardVisited[entry.Name] {
 						continue
 					}
@@ -346,7 +346,7 @@ func HeuristicBidirectionalBFS(target string, elementList []models.ElementEntry,
 							if len(mergedPaths) > seed {
 								resolved := mergedPaths[seed]
                                 for !IsFullyExpanded(resolved, elementTier){
-                                    resolved = HeuristicReverseBFSHelper(target, resolved, utils.ConvertToElementMap(elementList), elementTier)[0]
+                                    resolved = HeuristicReverseBFSHelper(target, resolved, elementList, elementTier)[0]
                                 }
                                 
                                 return resolved
@@ -367,7 +367,7 @@ func HeuristicBidirectionalBFS(target string, elementList []models.ElementEntry,
 				if entry.Name != curr {
 					continue
 				}
-				for _, recipe := range entry.Element.Recipes {
+				for _, recipe := range entry.Recipes {
 					if len(recipe) != 2 {
 						continue
 					}
@@ -393,7 +393,7 @@ func HeuristicBidirectionalBFS(target string, elementList []models.ElementEntry,
 								if len(mergedPaths) > seed {
                                     resolved := mergedPaths[seed]
                                     for !IsFullyExpanded(resolved, elementTier){
-                                        resolved = HeuristicReverseBFSHelper(target, resolved, utils.ConvertToElementMap(elementList), elementTier)[0]
+                                        resolved = HeuristicReverseBFSHelper(target, resolved, elementList, elementTier)[0]
                                     }
                                     
 									return resolved

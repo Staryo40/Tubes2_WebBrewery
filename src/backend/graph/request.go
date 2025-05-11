@@ -5,39 +5,18 @@ import (
 	"backend/utils"
 )
 
-func FindPathsBFS(target string, elements map[string]models.Element, elementTier map[string]int, pathNumber int, bi bool) [][]models.Node {
+func FindPathsBFS(target string, elements map[string]models.Element, elementTier map[string]int, pathNumber int, bi bool) []models.CountedPath {
 	if bi {
-
-	} else {
-		resEntry := HeuristicReverseBFS(target, elements, elementTier, 0)
-		if resEntry == nil {
-			return nil
-		}
-		return [][]models.Node{resEntry}
-	}
-
-	return nil
-}
-
-func FindPathsDFS(target string, elements map[string]models.Element, elementTier map[string]int, pathNumber int, bi bool) [][]models.Node {
-	if bi {
-
-	} else {
-		restriction := true
-		if pathNumber > 1 {
-			restriction = false
-		}
-		startRecipe := 0
 		i := 0
 		maxIteration := 150
 		result := [][]models.Node{}
 		for len(result) < pathNumber && i < maxIteration {
-			resEntry := ReverseDFS(target, elements, elementTier, startRecipe+i, restriction)
+			resEntry := HeuristicBidirectionalBFS(target, elements, elementTier, i)
 			if resEntry == nil {
 				i++
 				continue
 			}
-		
+
 			duplicate := false
 			for _, entry := range result {
 				if utils.PathsEqual(entry, resEntry) {
@@ -49,15 +28,171 @@ func FindPathsDFS(target string, elements map[string]models.Element, elementTier
 			if !duplicate {
 				result = append(result, resEntry)
 			}
-		
 			i++
 		}
-		
-		if len(result) == 0{
+
+		if len(result) == 0 {
 			return nil
 		}
-		return result
-	}
 
-	return nil
+		res := []models.CountedPath{}
+		for _, path := range result{
+			newEntry := models.CountedPath{
+				NodeCount: utils.NodeCounter(path, elementTier),
+				Path: path,
+			}
+			res = append(res, newEntry)
+		}
+
+		return res
+	} else {
+		i := 0
+		maxIteration := 150
+		result := [][]models.Node{}
+		for len(result) < pathNumber && i < maxIteration {
+			resEntry := HeuristicReverseBFS(target, elements, elementTier, i)
+			if resEntry == nil {
+				i++
+				continue
+			}
+
+			duplicate := false
+			for _, entry := range result {
+				if utils.PathsEqual(entry, resEntry) {
+					duplicate = true
+					break
+				}
+			}
+		
+			if !duplicate {
+				result = append(result, resEntry)
+			}
+			i++
+		}
+
+		if len(result) == 0 {
+			return nil
+		}
+
+		res := []models.CountedPath{}
+		for _, path := range result{
+			newEntry := models.CountedPath{
+				NodeCount: utils.NodeCounter(path, elementTier),
+				Path: path,
+			}
+			res = append(res, newEntry)
+		}
+
+		return res
+	}
+}
+
+func FindPathsDFS(target string, elements map[string]models.Element, elementTier map[string]int, pathNumber int, bi bool) []models.CountedPath {
+	if bi {
+		i := 0
+		maxIteration := 150
+		result := [][]models.Node{}
+		for len(result) < pathNumber && i < maxIteration {
+			resEntry := BidirectionalDFS(target, elements, elementTier, i)
+			if resEntry == nil {
+				i++
+				continue
+			}
+
+			duplicate := false
+			for _, entry := range result {
+				if utils.PathsEqual(entry, resEntry) {
+					duplicate = true
+					break
+				}
+			}
+		
+			if !duplicate {
+				result = append(result, resEntry)
+			}
+			i++
+		}
+
+		if len(result) == 0 {
+			return nil
+		}
+
+		res := []models.CountedPath{}
+		for _, path := range result{
+			newEntry := models.CountedPath{
+				NodeCount: utils.NodeCounter(path, elementTier),
+				Path: path,
+			}
+			res = append(res, newEntry)
+		}
+
+		return res
+	} else {
+		i := 0
+		maxIteration := 150
+		result := [][]models.Node{}
+		for len(result) < pathNumber && i < maxIteration {
+			resEntry := ReverseDFS(target, elements, elementTier, i, true)
+			if resEntry == nil {
+				i++
+				continue
+			}
+
+			duplicate := false
+			for _, entry := range result {
+				if utils.PathsEqual(entry, resEntry) {
+					duplicate = true
+					break
+				}
+			}
+		
+			if !duplicate {
+				result = append(result, resEntry)
+			}
+			i++
+		}
+
+		if len(result) == 0 {
+			return nil
+		}
+
+		res := []models.CountedPath{}
+		for _, path := range result{
+			newEntry := models.CountedPath{
+				NodeCount: utils.NodeCounter(path, elementTier),
+				Path: path,
+			}
+			res = append(res, newEntry)
+		}
+
+		return res
+	}
+}
+
+func FindPathsBFSConcurrent(target string, elements map[string]models.Element, elementTier map[string]int, pathNumber int, bi bool) []models.CountedPath {
+	if bi {
+		return utils.ConcurrentPathFinder(pathNumber, 150,
+			func(seed int) []models.Node {
+				return HeuristicBidirectionalBFS(target, elements, elementTier, seed)
+			}, elementTier)
+	} else {
+		return utils.ConcurrentPathFinder(pathNumber, 150,
+			func(seed int) []models.Node {
+				return HeuristicReverseBFS(target, elements, elementTier, seed)
+			}, elementTier)
+	}
+}
+
+func FindPathsDFSConcurrent(target string, elements map[string]models.Element, elementTier map[string]int, pathNumber int, bi bool) []models.CountedPath {
+	if bi {
+		return utils.ConcurrentPathFinder(pathNumber, 150,
+			func(seed int) []models.Node {
+				return BidirectionalDFS(target, elements, elementTier, seed)
+			}, elementTier)
+	} else {
+		return utils.ConcurrentPathFinder(pathNumber, 150,
+			func(seed int) []models.Node {
+				return ReverseDFS(target, elements, elementTier, seed, true)
+			}, elementTier)
+	}
 }

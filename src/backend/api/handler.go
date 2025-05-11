@@ -68,23 +68,16 @@ func RecipeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// GET OUTPUT
 	start := time.Now()
-    var result [][]models.Node
+    var result []models.CountedPath
     switch strings.ToUpper(req.Method) {
     case "BFS":
-		if req.Bidirectional{
-			// Fill later
-		} else {
-			result = graph.FindPathsBFS(req.Target, Elements, ElementTiers, req.PathNumber, req.Bidirectional)
-		}
-        
-
+		result = graph.FindPathsBFS(req.Target, Elements, ElementTiers, req.PathNumber, req.Bidirectional)
+		// result = graph.FindPathsBFSConcurrent(req.Target, Elements, ElementTiers, req.PathNumber, req.Bidirectional)
+		
     case "DFS":
-		if req.Bidirectional{
-			// Fill later
-		} else {
-			result = graph.FindPathsDFS(req.Target, Elements, ElementTiers, req.PathNumber, req.Bidirectional)
-		}
-
+		// result = graph.FindPathsDFS(req.Target, Elements, ElementTiers, req.PathNumber, req.Bidirectional)
+		result = graph.FindPathsDFSConcurrent(req.Target, Elements, ElementTiers, req.PathNumber, req.Bidirectional)
+		
     default:
         http.Error(w, "Invalid method: must be 'BFS' or 'DFS'", http.StatusBadRequest)
         return
@@ -104,14 +97,13 @@ func RecipeHandler(w http.ResponseWriter, r *http.Request) {
 	
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
-	fmt.Println("tes7")
 	fmt.Printf("Response Count: %d\n", response.Count)
 	fmt.Printf("Response ElapsedTime (microseconds): %d\n", response.ElapsedTime)
 }
 
 func WithCORS(handler http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 

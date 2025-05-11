@@ -22,13 +22,18 @@ type RequestPayload struct {
     Target string 		`json:"target"`
     Method string 		`json:"method"`
     PathNumber  int 	`json:"pathNumber"`  
-	Bidirectional bool 	`json: "bidirectional"`
+	Bidirectional bool 	`json:"bidirectional"`
 }
 
 type ResponsePayload struct {
     Count     int           `json:"count"`   
-    ElapsedTime int64         `json:"elapsedTime"` 
-    Paths     [][]Node      `json:"paths"`     
+    ElapsedTime int64       `json:"elapsedTime"` 
+    Paths     []CountedPath `json:"paths"`     
+}
+
+type CountedPath struct {
+    NodeCount int       `json:"nodeCount"`
+    Path     []Node     `json:"path"` 
 }
 
 type ErrorResponse struct {

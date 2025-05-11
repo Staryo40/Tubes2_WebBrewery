@@ -158,3 +158,55 @@ func InsertAt(path []models.Node, index int, node models.Node) []models.Node {
 	path = append(path[:index], append([]models.Node{node}, path[index:]...)...)
 	return path
 }
+
+func NodeCounter(path []models.Node, elementTier map[string]int) int {
+	targetName := FindTarget(path)
+	if len(targetName) == 0 {
+		fmt.Println("Error counting node, no target found")
+		return 0
+	}
+
+	// Build map for quick lookup
+	nodeMap := make(map[string]models.Node)
+	for _, node := range path {
+		nodeMap[node.Name] = node
+	}
+
+    var countRecursive func(name string) int
+	countRecursive = func(name string) int {
+		tier := elementTier[name]
+		if tier == 0 {
+			return 1
+		}
+
+		node, exists := nodeMap[name]
+		if !exists {
+			return 0
+		}
+
+		return 1 + countRecursive(node.Ingredient1) + countRecursive(node.Ingredient2)
+	}
+
+	// Start recursion from the target
+	return countRecursive(targetName)
+
+    
+}
+
+func FindTarget(path []models.Node) string{
+    for _, el := range path{
+        isTarget := true
+        for _, check := range path{
+            if el.Name == check.Ingredient1 || el.Name == check.Ingredient2 {
+                isTarget = false
+                break
+            }
+        }
+
+        if isTarget {
+            return el.Name
+        }
+    }
+
+    return ""
+}
