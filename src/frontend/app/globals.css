@@ -26,3 +26,13 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.custom-link {
+  stroke: white !important;
+  stroke-width: 2px;
+}
+
+.rd3t-svg {
+  height: auto !important;
+  min-height: 300px;
+}

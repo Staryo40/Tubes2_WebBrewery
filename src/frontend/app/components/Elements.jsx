@@ -34,7 +34,7 @@ const Elements = () => {
     return recipes.map((recipe, index) => (
       <div key={index} className="mb-2">
         {recipe[0] === 'Available from the start' ? (
-          <p>Starting element</p>
+          <span className="bg-gray-300 px-2 py-1 rounded text-black">Available from the start</span>
         ) : (
           <div className="flex items-center space-x-2">
             {recipe.map((item, i) => (
@@ -57,7 +57,7 @@ const Elements = () => {
           placeholder="Search element"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-orange-500"
+          className="w-full p-2 border bg-[#3f383f] border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-orange-500"
           />
       </div>
  
@@ -95,7 +95,7 @@ const Elements = () => {
             </div>
                  
             <h3 className="font-semibold mb-2 text-black">Recipes:</h3>
-            <div className="space-y-2">
+            <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
               {recipesPopUp(selectedElement.recipes)}
             </div>
           </div>
