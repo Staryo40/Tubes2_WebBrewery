@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { useEffect } from "react";
+import Tree from 'react-d3-tree';
 import elementsData from '@/public/elements.json';
 
 
@@ -12,6 +13,8 @@ const Visualization = () => {
     const [isMultipleRecipe, setIsMultipleRecipe] = useState(false);
     const [isBidirectional, setIsBidirectional] = useState(false);
     const [recipeCount, setRecipeCount] = useState(1);
+    const [currentPage, setCurrentPage] = useState(0);
+    const recipesPerPage = 1;
 
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState(null);
@@ -44,6 +47,8 @@ const Visualization = () => {
             setLoading(true);
             setError(null);
             setResult(null);
+            console.log(algorithmMode);
+            console.log('tes');
 
             const payload = {
               Target: selectedElement.name,
@@ -71,19 +76,85 @@ const Visualization = () => {
               setResult(data);
               console.log('Backend berhasil mengirim hasil resep');
             } catch (err) {
-              setError('Terjadi kesalahan saat menghubungi sever.');
+              setError('Terjadi kesalahan saat menghubungi server.');
               console.error('Error:', err);
             } finally {
               setLoading(false);
             }
 
-
         }
+        const convertPathToTreeData = (path) => {
+          const nodeMap = new Map();
+          const createdNodes = new Map();
+                
+          const createNode = (name, isClone = false) => {
+            const nodeId = `${name}-${isClone ? 'clone-' + Date.now() : 'original'}`;
+            const newNode = { id: nodeId, name, children: [], isClone };
+            createdNodes.set(nodeId, newNode);
+            nodeMap.set(name, newNode);
+            return newNode;
+          };
+        
+          const getNode = (name) => {
+            if (!nodeMap.has(name)) {
+              createNode(name);
+            }
+            return createdNodes.get(nodeMap.get(name).id);
+          };
+        
+          const buildingNodes = new Set(); 
+        
+          const buildTree = (step, currentIndex) => {
+            const currentNode = getNode(step.Name);
+          
+            if (buildingNodes.has(currentNode.id)) {
+              return currentNode; // Hindari loop
+            }
+            buildingNodes.add(currentNode.id);
+          
+            const ingredient1Name = step.Ingredient1;
+            const ingredient2Name = step.Ingredient2;
+          
+            const ingredient1Node = getNode(ingredient1Name);
+            const ingredient2Node = getNode(ingredient2Name);
+          
+            if (!currentNode.children.some(child => child.id === ingredient1Node.id)) {
+              currentNode.children.push(ingredient1Node);
+            }
+        {
+              currentNode.children.push(ingredient2Node);
+            }
+          
+            // Cari langkah sebelumnya di path untuk bahan-bahan ini (sebelum currentIndex)
+            for (let i = currentIndex - 1; i >= 0; i--) {
+              if (path[i].Name === ingredient1Name && !ingredient1Node.children.length) {
+                buildTree(path[i], i);
+              }
+              if (path[i].Name === ingredient2Name && !ingredient2Node.children.length) {
+                buildTree(path[i], i);
+              }
+            }
+          
+            buildingNodes.delete(currentNode.id); // Hapus dari set setelah selesai membangun cabangnya
+            return currentNode;
+          };
+        
+          const treeData = [];
+          if (path.length > 0) {
+            treeData.push(buildTree(path[path.length - 1], path.length - 1)); // Mulai dari elemen target dengan indeksnya
+          }
+        
+          return treeData;
+        };
+
+
+
+
   return (
-    <div className="flex h-screen ">
+    <div className="flex min-h-[110vh] ">
         {/* sidebar */}
-        <div className="w-1/5 flex flex-col h-screen bg-[#350535]">
-          <div className="h-20 p-4 sticky top-0 z-10">
+        <div className="w-1/5 flex flex-col h-[110vh] bg-[#350535]">
+          <div className="h-20 p-4 top-0 z-10">
             <input
             type="text"
             placeholder="Search element"
@@ -91,7 +162,7 @@ const Visualization = () => {
             onChange={(e) => setSearchQuery(e.target.value)
               
             }
-            className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-orange-500"
+            className="w-full p-2 bg-[#3f383f] border border-gray-300 rounded focus:outline-none ring-white focus:ring-2 focus:ring-orange-500"
             />
           </div>
             <div className="flex-1 overflow-y-auto">
@@ -103,6 +174,7 @@ const Visualization = () => {
                         setSelectedElement(element);
                         setResult(null);
                         setError(null);
+                        setCurrentPage(0);
                       }}
                       className="flex items-center w-full rounded space-x-3 hover:bg-orange-100 transition"
                       >
@@ -117,17 +189,17 @@ const Visualization = () => {
             </div>
 
         </div>
-        {/* Visualization (masih dummy) */}
-        <div className="flex-1 flex-col px-6 py-4">
+        {/* Visualization */}
+        <div className="flex flex-col flex-1 px-6 py-4 overflow-hidden h-[110vh]">
           {/* control bar */}
             <div className="flex justify-between items-center p-2 pb-4 border-b">
-              <button
-                onClick={handleStartVisualization}
-                className="px-4 py-2 bg-[#5e3e5e] text-white rounded hover:bg-[#946c94] transition"
-                disabled={loading}
-               >
-                   {loading ? 'Loading...' : 'Start'}
-              </button>
+             <button
+               onClick={handleStartVisualization}
+               className="px-4 py-2 bg-[#faa620] text-black text-bold shadow-md rounded hover:bg-[#aaa45c] transition-all hover:scale-105 active:opacity-75"
+               disabled={loading}
+             >
+               {loading ? 'Loading...' : 'Start'}
+             </button>
               <div>
 
               </div>
@@ -174,13 +246,19 @@ const Visualization = () => {
 
               <div className="flex items-center bg-gray-100 rounded-lg p-1">
                 <button
-                onClick={() => setAlgorithmMode("BFS")}
+                onClick={() => {
+                  setAlgorithmMode("BFS");
+                  setCurrentPage(0);
+                }}
                 className={`px-4 py-2 rounded-md transition ${algorithmMode === "BFS" ? 'bg-gray-500 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-50'}`}
                 >
                 BFS
                 </button>
                 <button
-                onClick={() => setAlgorithmMode("DFS")}
+                onClick={() => {
+                  setAlgorithmMode("DFS");
+                  setCurrentPage(0);
+                }}
                 className={`px-4 py-2 rounded-md transition ${algorithmMode === "DFS" ? 'bg-gray-500 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-50'}`}
                 >
                 DFS
@@ -188,27 +266,113 @@ const Visualization = () => {
               </div>
             </div>
             {/* topbar tombol dfs bfs */}
-            <h1 className="text-2xl font-bold text-orange-600 mb-4 mt-10">Visualization Area</h1>
-            {selectedElement ? (
-          <div>
-            <h2 className="text-xl font-semibold mb-2">{selectedElement.name}</h2>
-            <img src={selectedElement.image} alt={selectedElement.name} className="w-16 h-16 mb-2" />
-            {/* Nanti diisi komponen visualisasi */}
-          </div>
-        ) : (
-          <p className="text-gray-500">Silakan select elemen yang ingin divisualisasikan resepnya.</p>
-        )}
+            <div className="mt-4"></div>
+             {selectedElement ? (
+              <div className="flex items-center space-x-3 px-2">
+                <h2 className="text-2xl font-semibold text-amber-600 mb-2">{selectedElement.name}</h2>
+                <img src={selectedElement.image} alt={selectedElement.name} className="w-12 h-12 mb-1" />
+              </div>
+            ) : (
+              <p className="text-gray-400 mt-2 px-2">Silakan select elemen yang ingin divisualisasikan resepnya.</p>
+            )}
           {loading && <p>Loading results...</p>}
           {error && <p className="text-red-500">Error: {error}</p>}
-          {result && (
-                    <div>
-                        <h2 className="text-xl font-semibold mb-2">Recipe for {selectedElement?.name}</h2>
-                        {/* Tampilkan hasil visualisasi di sini berdasarkan `visualizationResult` */}
-                        <p className="mb-2 text-white">Jumlah Resep Ditemukan: {result.count}</p> 
-                        <p className="mb-2 text-white">waktu: {result.elapsedTime}</p> 
-                      
-                    </div>
-                )}
+          {(!result && !loading) && (
+            <p className="text-gray-300 text-xl mt-4 px-2">Belum ada visualisasi</p>
+          )}
+          {result && result.paths && result.paths.length > 0 ? (
+          <div className="flex-1 p-2 px-2 space-y-4">
+            <p className="mb-1 text-white text-xs">Jumlah Resep Ditemukan: {result.count}</p>
+            <p className="mb-4 text-white text-xs">Waktu: {result.elapsedTime} ms</p>
+
+            {result?.paths?.length > 1 && isMultipleRecipe && (
+              <div className="flex justify-center space-x-4 mb-4 items-center">
+                <button
+                  onClick={() => setCurrentPage(currentPage - 1)}
+                  disabled={currentPage === 0}
+                  className={`px-3 py-1 rounded ${
+                    currentPage === 0 
+                        ? 'bg-gray-500 text-white' 
+                        : 'bg-white text-black border border-gray-300 hover:bg-gray-300'
+                    }`}
+                >
+                Prev
+                </button>
+                <span className="text-white">{currentPage + 1} / {result?.paths?.length}</span>
+                <button
+                onClick={() => setCurrentPage(currentPage + 1)}
+                disabled={currentPage === (result?.paths?.length - 1)}
+                className={`px-3 py-1 rounded ${
+                currentPage === (result?.paths?.length - 1)
+                    ? 'bg-gray-500 text-white' 
+                    : 'bg-white text-black border border-gray-300 hover:bg-gray-300'
+                }`}
+                >
+                Next
+                </button>
+              </div>
+              )}
+
+
+            <div className="space-y-4 flex-1 ">
+              {(() => {
+                if (!result?.paths) return [];
+                    const indexOfLastRecipe = (currentPage + 1) * recipesPerPage;
+                    const indexOfFirstRecipe = indexOfLastRecipe - recipesPerPage;
+                    const currentRecipes = result.paths.slice(indexOfFirstRecipe, indexOfLastRecipe);
+                    return currentRecipes.map((recipeObject, index) => {
+                      const treeData = convertPathToTreeData(recipeObject.path);
+                      return treeData && (
+                        <div key={index} className="border p-4 rounded-md flex flex-col flex-1 overflow-hidden">
+                          <h3 className="font-semibold">Recipe {indexOfFirstRecipe + index + 1}</h3>
+                          <p className="text-xs">Node Count: {recipeObject.nodeCount}</p>
+                          <div className="overflow-auto flex-1 ">
+                            <Tree
+                              data={treeData}
+                              orientation="bottom-top"
+                              pathClassFunc={() => 'custom-link'}
+                              panOnDrag={false}              
+                              zoomable={true}                
+                              translate={{ x: 420, y: 40 }}
+                              depthFactor={80} 
+                              separation={{ siblings: 1.6, nonSiblings: 1.2 }}
+                              nodeSize={{ x: 100, y: 60 }}
+                              scaleExtent={{ min: 0.2, max: 2 }} 
+                              renderCustomNodeElement={({ nodeDatum }) => (
+                                <g>
+                                <rect
+                                  width={105}
+                                  height={30}
+                                  x={-50}   
+                                  y={-12}   
+                                  fill="white"
+                                  stroke="#ccc"
+                                  style={{ cursor: 'pointer' }}
+                                />
+                                <text
+                                  x={0}
+                                  y={5}
+                                  fill="black"
+                                  textAnchor="middle"
+                                  alignmentBaseline="middle"
+                                  fontSize={12}
+                                  fontWeight="normal"
+                                >
+                                  {nodeDatum.name}
+                                </text>
+                              </g>
+                            )}
+                          />
+                          </div>
+                        </div>
+                      );
+                      });
+                    })()}
+                  </div>
+                </div>
+              ) : (
+            result && <p className="text-gray-500">Tidak ada resep ditemukan untuk {selectedElement?.name}.</p>
+          )}
         </div>
     </div>
   )

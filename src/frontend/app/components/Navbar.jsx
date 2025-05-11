@@ -13,16 +13,16 @@ const Navbar = ({ onNavigate, active }) => {
         <div className="flex space-x-6 mr-5">
           <button
             onClick={() => onNavigate("elements")}
-            className={`font-medium transition-colors ${
-              active === "elements" ? "text-amber-300" : "text-white hover:text-amber-300"
+            className={`font-medium transition-colors p-2 py-2 rounded ${
+              active === "elements" ? "text-amber-300" : "text-white hover:text-amber-300 hover:bg-[#4c2c43]"
             }`}
           >
             Elements
           </button>
           <button
             onClick={() => onNavigate("visualization")}
-            className={`font-medium transition-colors ${
-              active === "visualization" ? "text-amber-300" : "text-white hover:text-amber-300"
+            className={`font-medium transition-colors p-2 py-2 rounded ${
+              active === "visualization" ? "text-amber-300" : "text-white hover:text-amber-300 hover:bg-[#4c2c43]"
             }`}
           >
             Recipe Visualization
