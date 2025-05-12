@@ -37,6 +37,10 @@ body {
   min-height: 300px;
 }
 
-.rd3t-node text {
-    font-weight: normal !important;
+
+.rd3t-node {
+  cursor: pointer;
+  fill: #777;
+  stroke: #000;
+  stroke-width: 1 !important;
 }
