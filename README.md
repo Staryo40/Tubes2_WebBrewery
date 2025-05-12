@@ -7,15 +7,14 @@ Both algorithms are implemented in creating this simple web application project 
 
 ## Program Requirements
 ### Backend (Go)
-  - Version **1.18+** (ideally the latest 1.x release)  
+  - Go: ideally the latest 1.x release  
 
 ### Frontend (Next.js)
-- **Node.js**  
-  - Version **16.x** or **18.x**  
-- **npm** (v8+) _or_ **Yarn** (v1.22+)
+- Node.js: version **16.x** or **18.x**  
+- npm: v8+
 
 ### Containerized Setup
-- **Docker** & **Docker Compose**  
+- Docker & Docker Compose  
 
 ## Compiling the Program
 Compile the program only if you want to run the program locally with the raw code
