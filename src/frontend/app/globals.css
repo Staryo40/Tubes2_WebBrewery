@@ -36,3 +36,7 @@ body {
   height: auto !important;
   min-height: 300px;
 }
+
+.rd3t-node text {
+    font-weight: normal !important;
+}

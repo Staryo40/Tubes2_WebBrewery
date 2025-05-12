@@ -340,16 +340,16 @@ const Visualization = () => {
                               panOnDrag={false}              
                               zoomable={true}                
                               translate={{ x: 420, y: 40 }}
-                              depthFactor={80} 
-                              separation={{ siblings: 1.6, nonSiblings: 1.2 }}
+                              depthFactor={85} 
+                              separation={{ siblings: 1.8, nonSiblings: 1.8 }}
                               nodeSize={{ x: 100, y: 60 }}
-                              scaleExtent={{ min: 0.2, max: 2 }} 
+                              scaleExtent={{ min: 0.2, max: 0.8 }} 
                               renderCustomNodeElement={({ nodeDatum }) => (
                                 <g>
                                 <rect
-                                  width={105}
+                                  width={140}
                                   height={30}
-                                  x={-50}   
+                                  x={-70}   
                                   y={-12}   
                                   fill="white"
                                   stroke="#ccc"
@@ -358,11 +358,12 @@ const Visualization = () => {
                                 <text
                                   x={0}
                                   y={5}
-                                  fill="black"
+                                  fill={nodeDatum.children && nodeDatum.children.length > 0 ? 'blue' : 'black'}
                                   textAnchor="middle"
                                   alignmentBaseline="middle"
                                   fontSize={12}
-                                  fontWeight="normal"
+                                  letterSpacing="2px"
+                                  style={{ fontWeight: 'normal' }}
                                 >
                                   {nodeDatum.name}
                                 </text>
