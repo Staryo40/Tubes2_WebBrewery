@@ -270,11 +270,12 @@ func HeuristicBidirectionalBFS(target string, elements map[string]models.Element
     for _, elName := range elementNames {
         el := elements[elName]
 
-        sort.Slice(el.Recipes, func(i, j int) bool {
-            return strings.Join(el.Recipes[i], "+") < strings.Join(el.Recipes[j], "+")
+        recipes := append([][]string(nil), el.Recipes...)
+        sort.Slice(recipes, func(i, j int) bool {
+            return strings.Join(recipes[i], "+") < strings.Join(recipes[j], "+")
         })
 
-        for _, recipe := range el.Recipes {
+        for _, recipe := range recipes {
             if len(recipe) == 2 {
                 ing1, ing2 := recipe[0], recipe[1]
 
@@ -297,11 +298,12 @@ func HeuristicBidirectionalBFS(target string, elements map[string]models.Element
 
     // Initialize Reverse Queue
     reverseQueue := [][]models.Node{}
-    sort.Slice(elements[target].Recipes, func(i, j int) bool {
-        return strings.Join(elements[target].Recipes[i], "+") < strings.Join(elements[target].Recipes[j], "+")
+    targetRecipes := append([][]string(nil), elements[target].Recipes...)
+    sort.Slice(targetRecipes, func(i, j int) bool {
+        return strings.Join(targetRecipes[i], "+") < strings.Join(targetRecipes[j], "+")
     })
     
-    for _, recipe := range elements[target].Recipes {
+    for _, recipe := range targetRecipes {
         if len(recipe) == 2 {
             ing1, ing2 := recipe[0], recipe[1]
     
@@ -336,7 +338,15 @@ func HeuristicBidirectionalBFS(target string, elements map[string]models.Element
 
 		last := currentForward[len(currentForward)-1]
 		for _, el := range elements {
-			for _, recipe := range el.Recipes {
+            recipes := append([][]string(nil), el.Recipes...)
+            sort.Slice(recipes, func(i, j int) bool {
+                a1, a2 := recipes[i][0], recipes[i][1]
+                if a1 > a2 { a1, a2 = a2, a1 }
+                b1, b2 := recipes[j][0], recipes[j][1]
+                if b1 > b2 { b1, b2 = b2, b1 }
+                return a1+"+"+a2 < b1+"+"+b2
+            })
+			for _, recipe := range recipes {
 				if len(recipe) != 2 || elementTier[el.Name] >= elementTier[target] {
 					continue
 				}
@@ -377,7 +387,9 @@ func HeuristicBidirectionalBFS(target string, elements map[string]models.Element
 		}
 
 		if missing != "" {
-			for _, recipe := range elements[missing].Recipes {
+            suspect := elements[missing]
+            recipes := append([][]string(nil), suspect.Recipes...)
+			for _, recipe := range recipes {
 				if len(recipe) != 2 || elementTier[recipe[0]] >= elementTier[missing] || elementTier[recipe[1]] >= elementTier[missing] {
 					continue
 				}

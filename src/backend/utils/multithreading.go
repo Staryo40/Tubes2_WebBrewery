@@ -3,6 +3,7 @@ package utils
 import (
 	"backend/models"
 	"fmt"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -16,45 +17,50 @@ func ConcurrentPathFinder(pathNumber, maxIteration int, finderFunc func(seed int
 
     var (
         wg      sync.WaitGroup
-        resChan = make(chan seedPath, maxIteration)
+        sem     = make(chan struct{}, runtime.NumCPU())      
+        resChan = make(chan seedPath, maxIteration)         
     )
 
-    // 1) Launch all finderFunc(seed) in parallel
     for seed := 0; seed < maxIteration; seed++ {
         wg.Add(1)
-        go func(seed int) {
+        go func(s int) {
             defer wg.Done()
-            if p := finderFunc(seed); p != nil {
-                resChan <- seedPath{seed, p}
+
+            sem <- struct{}{}
+            defer func() { <-sem }()
+
+            defer func() {
+                if r := recover(); r != nil {
+                    fmt.Printf("Panic in seed=%d: %v\n", s, r)
+                }
+            }()
+
+            if p := finderFunc(s); p != nil {
+                resChan <- seedPath{seed: s, path: p}
             }
         }(seed)
     }
 
-    // 2) Close channel once all goroutines finish
     go func() {
         wg.Wait()
         close(resChan)
     }()
 
-    // 3) Collect all results
     all := make([]seedPath, 0, maxIteration)
     for sp := range resChan {
         all = append(all, sp)
     }
 
-    // 4) Sort by seed ascending
     sort.Slice(all, func(i, j int) bool {
         return all[i].seed < all[j].seed
     })
 
-    // 5) Dedupe & pick first pathNumber unique paths
-    resultSet := make(map[string]bool)
+    seen := make(map[string]bool)
     final := make([]models.CountedPath, 0, pathNumber)
-
     for _, sp := range all {
         fp := PathFingerprint(sp.path)
-        if !resultSet[fp] {
-            resultSet[fp] = true
+        if !seen[fp] {
+            seen[fp] = true
             final = append(final, models.CountedPath{
                 NodeCount: NodeCounter(sp.path, elementTier),
                 Path:      sp.path,

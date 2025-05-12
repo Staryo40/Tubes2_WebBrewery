@@ -51,11 +51,12 @@ func BidirectionalDFS(target string, elements map[string]models.Element, element
     for _, elName := range elementNames {
         el := elements[elName]
 
-        sort.Slice(el.Recipes, func(i, j int) bool {
-            return strings.Join(el.Recipes[i], "+") < strings.Join(el.Recipes[j], "+")
+        recipes := append([][]string(nil), el.Recipes...)
+        sort.Slice(recipes, func(i, j int) bool {
+            return strings.Join(recipes[i], "+") < strings.Join(recipes[j], "+")
         })
 
-        for _, recipe := range el.Recipes {
+        for _, recipe := range recipes {
             if len(recipe) == 2 {
                 ing1, ing2 := recipe[0], recipe[1]
 
@@ -78,11 +79,12 @@ func BidirectionalDFS(target string, elements map[string]models.Element, element
 
 	// Initiate reverse stack
 	reverseStack := [][]models.Node{}
-	sort.Slice(elements[target].Recipes, func(i, j int) bool {
-        return strings.Join(elements[target].Recipes[i], "+") < strings.Join(elements[target].Recipes[j], "+")
+	trecipes := append([][]string(nil), elements[target].Recipes...)
+    sort.Slice(trecipes, func(i, j int) bool {
+        return strings.Join(trecipes[i], "+") < strings.Join(trecipes[j], "+")
     })
     
-    for _, recipe := range elements[target].Recipes {
+    for _, recipe := range trecipes {
         if len(recipe) == 2 {
             ing1, ing2 := recipe[0], recipe[1]
     
@@ -119,16 +121,16 @@ func BidirectionalDFS(target string, elements map[string]models.Element, element
 		for _, elName := range elementNames {
 			el := elements[elName]
 		
-			sort.Slice(el.Recipes, func(i, j int) bool {
-				ri, rj := el.Recipes[i], el.Recipes[j]
-				a1, a2 := ri[0], ri[1]
-				if a1 > a2 { a1, a2 = a2, a1 }
-				b1, b2 := rj[0], rj[1]
-				if b1 > b2 { b1, b2 = b2, b1 }
-				return a1+"+"+a2 < b1+"+"+b2
-			})
+			recipes := append([][]string(nil), el.Recipes...)
+            sort.Slice(recipes, func(i, j int) bool {
+                a1, a2 := recipes[i][0], recipes[i][1]
+                if a1 > a2 { a1, a2 = a2, a1 }
+                b1, b2 := recipes[j][0], recipes[j][1]
+                if b1 > b2 { b1, b2 = b2, b1 }
+                return a1+"+"+a2 < b1+"+"+b2
+            })
 
-			for _, recipe := range el.Recipes {
+			for _, recipe := range recipes {
 				if len(recipe) != 2 || elementTier[el.Name] >= elementTier[target] {
 					continue
 				}
