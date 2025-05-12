@@ -254,7 +254,7 @@ func HeuristicReverseBFS(target string, elements map[string]models.Element, elem
 }
 
 // BIDIRECTIONAL
-func HeuristicBidirectionalBFS(target string, elements map[string]models.Element, elementTier map[string]int, seed int) []models.Node {
+func BidirectionalBFS(target string, elements map[string]models.Element, elementTier map[string]int, seed int) []models.Node {
 	if elementTier[target] == 0 {
 		return []models.Node{{Name: target}}
 	}
@@ -593,11 +593,31 @@ func BidirectionalBFSHelper(forwardQueue [][]models.Node, reverseQueue [][]model
                     }
 
                     // Expand until fully resolved
-                    expanded := merged
-                    resolvedSeed := seed
-                    for !IsFullyExpanded(expanded, elementTier) {
-                        expanded = BFSExpandMissing(target, expanded, elements, elementTier, resolvedSeed)
-                        resolvedSeed++
+                    count := 0
+                    expandedQueue := [][]models.Node{merged}
+                    expanded := []models.Node{}
+                    for len(expandedQueue) > 0 {
+                        current := expandedQueue[0]
+                        expandedQueue = expandedQueue[1:]
+                        expansions := HeuristicReverseBFSHelper(target, current, elements, elementTier)
+                        exit := false
+
+                        for _, bruh := range expansions {
+                            if IsFullyExpanded(bruh, elementTier) {
+                                if count == seed {
+                                    expanded = bruh
+                                    exit = true
+                                    break
+                                }
+                                count++
+                            } else {
+                                expandedQueue = append(expandedQueue, bruh)
+                            }
+                        }
+
+                        if exit {
+                            break
+                        }
                     }
 
                     // Deduplication
@@ -636,129 +656,6 @@ func BidirectionalBFSHelper(forwardQueue [][]models.Node, reverseQueue [][]model
     }
 
     return nil
-}
-
-func BFSExpandMissing(target string, path []models.Node, elements map[string]models.Element, elementTier map[string]int, seed int) []models.Node {
-    nameSet := make(map[string]bool)
-    for _, node := range path {
-        nameSet[node.Name] = true
-    }
-
-    var missing string
-    for _, node := range path {
-        if elementTier[node.Ingredient1] != 0 && !nameSet[node.Ingredient1] && elementTier[node.Ingredient1] < elementTier[node.Name] {
-            missing = node.Ingredient1
-            break
-        }
-        if elementTier[node.Ingredient2] != 0 && !nameSet[node.Ingredient2] && elementTier[node.Ingredient2] < elementTier[node.Name] {
-            missing = node.Ingredient2
-            break
-        }
-    }
-
-    if missing == "" {
-        return path
-    }
-
-    expansion := BFSGetMissingPath(missing, elements, elementTier, seed)
-
-    if expansion == nil {
-        return path 
-    }
-
-    return append(expansion, path...)
-}
-
-func BFSGetMissingPath(current string, elements map[string]models.Element, elementTier map[string]int, seed int) []models.Node {
-    // fmt.Println("Called")
-	queue := [][]models.Node{}
-
-	// Initialize with all valid recipes for the target
-	el, exists := elements[current]
-	if !exists || len(el.Recipes) == 0 {
-		return nil
-	}
-
-    sort.Slice(el.Recipes, func(i, j int) bool {
-		return strings.Join(el.Recipes[i], "+") < strings.Join(el.Recipes[j], "+")
-	})
-
-    for _, recipe := range el.Recipes {
-        if len(recipe) != 2 {
-            continue
-        }
-        if elementTier[recipe[0]] >= elementTier[current] || elementTier[recipe[1]] >= elementTier[current] {
-            continue
-        }
-        node := models.Node{
-            Name:        current,
-            Ingredient1: recipe[0],
-            Ingredient2: recipe[1],
-        }
-        queue = append(queue, []models.Node{node})
-    }
-
-    // RESOLVING CURRENT
-    for len(queue) > 0 {
-        path := queue[0]
-        queue = queue[1:]
-
-        if IsFullyExpanded(path, elementTier) {
-            return path
-        }
-
-        // Find first missing ingredient in path
-        nameSet := make(map[string]bool)
-        for _, node := range path {
-            nameSet[node.Name] = true
-        }
-
-        var missing string
-        for _, node := range path {
-            if elementTier[node.Ingredient1] != 0 && !nameSet[node.Ingredient1] && elementTier[node.Ingredient1] < elementTier[node.Name] {
-                missing = node.Ingredient1
-                break
-            }
-            if elementTier[node.Ingredient2] != 0 && !nameSet[node.Ingredient2] && elementTier[node.Ingredient2] < elementTier[node.Name] {
-                missing = node.Ingredient2
-                break
-            }
-        }
-
-        if missing != "" {
-            missingEl := elements[missing]
-            sort.Slice(missingEl.Recipes, func(i, j int) bool {
-                return strings.Join(missingEl.Recipes[i], "+") < strings.Join(missingEl.Recipes[j], "+")
-            }) 
-
-            for _, recipe := range missingEl.Recipes {
-                if len(recipe) != 2 || elementTier[recipe[0]] >= elementTier[missing] || elementTier[recipe[1]] >= elementTier[missing] {
-                    continue
-                }
-                newNode := models.Node{
-                    Name:        missing,
-                    Ingredient1: recipe[0],
-                    Ingredient2: recipe[1],
-                }
-
-                skip := false 
-                for _, entry := range path {
-                    if utils.NodeEqual(entry, newNode) {
-                        skip = true
-                        break
-                    }
-                }
-                if skip {
-                    continue
-                }
-
-                newPath := append([]models.Node{newNode}, path...)
-                queue = append(queue, newPath)
-            }
-        }
-    }
-
-	return nil // no valid path found
 }
 
 func IsFullyExpanded(path []models.Node, elementTier map[string]int) bool {

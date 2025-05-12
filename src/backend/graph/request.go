@@ -11,7 +11,7 @@ func FindPathsBFS(target string, elements map[string]models.Element, elementTier
 		maxIteration := 150
 		result := [][]models.Node{}
 		for len(result) < pathNumber && i < maxIteration {
-			resEntry := HeuristicBidirectionalBFS(target, elements, elementTier, i)
+			resEntry := BidirectionalBFS(target, elements, elementTier, i)
 			if resEntry == nil {
 				i++
 				continue
@@ -173,7 +173,7 @@ func FindPathsBFSConcurrent(target string, elements map[string]models.Element, e
 	if bi {
 		return utils.ConcurrentPathFinder(pathNumber, 150,
 			func(seed int) []models.Node {
-				return HeuristicBidirectionalBFS(target, elements, elementTier, seed)
+				return BidirectionalBFS(target, elements, elementTier, seed)
 			}, elementTier)
 	} else {
 		return utils.ConcurrentPathFinder(pathNumber, 150,
