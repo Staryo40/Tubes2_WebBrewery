@@ -1,12 +1,12 @@
 package main
 
 import (
-    "fmt"
-    "time"
-	"backend/graph"
-    // "log"
-    // "net/http"
-    // "backend/api" 
+    // "fmt"
+    // "time"
+	// "backend/graph"
+    "log"
+    "net/http"
+    "backend/api" 
     "backend/models"
     "backend/utils"
 )
@@ -20,29 +20,29 @@ func main() {
 	utils.LoadElements(jsonPath, elements)
 	utils.LoadTierMap(jsonPath, tiers)	
 
-	// api.InitData(elements, tiers)
+	api.InitData(elements, tiers)
 
-	// http.HandleFunc("/api/recipe", api.WithCORS(api.RecipeHandler))
+	http.HandleFunc("/api/recipe", api.WithCORS(api.RecipeHandler))
 
-	// log.Println("Server is running at http://localhost:8080")
-	// log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Println("Server is running at http://localhost:8080")
+	log.Fatal(http.ListenAndServe(":8080", nil))
 
 	// ------------------------ SINGULAR TESTS
-	target := "Fish"
-	start := time.Now()
+	// target := "Fish"
+	// start := time.Now()
 
-	result := graph.HeuristicBidirectionalBFS(target, elements, tiers, 100)
-	// result := graph.BidirectionalDFS(target, elements, tiers, 1)
-	elapsed := time.Since(start)
-	if result == nil {
-		fmt.Println("Kok kosong")
-	}
+	// result := graph.HeuristicBidirectionalBFS(target, elements, tiers, 100)
+	// // result := graph.BidirectionalDFS(target, elements, tiers, 1)
+	// elapsed := time.Since(start)
+	// if result == nil {
+	// 	fmt.Println("Kok kosong")
+	// }
 
-	for i, node := range result {
-		fmt.Printf("%d. %s (%d) + %s (%d) → %s (%d)\n", i+1, node.Ingredient1, tiers[node.Ingredient1], node.Ingredient2, tiers[node.Ingredient2], node.Name, tiers[node.Name])
-	}
-	fmt.Printf("⏱ Execution time: %s\n", elapsed)
-	fmt.Printf("Total nodes: %d\n", utils.NodeCounter(result, tiers))
+	// for i, node := range result {
+	// 	fmt.Printf("%d. %s (%d) + %s (%d) → %s (%d)\n", i+1, node.Ingredient1, tiers[node.Ingredient1], node.Ingredient2, tiers[node.Ingredient2], node.Name, tiers[node.Name])
+	// }
+	// fmt.Printf("⏱ Execution time: %s\n", elapsed)
+	// fmt.Printf("Total nodes: %d\n", utils.NodeCounter(result, tiers))
 
 
 	//  ------------------------ PRODUCE AN IMAGE
