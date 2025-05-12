@@ -18,6 +18,7 @@ const Visualization = () => {
 
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState(null);
+    const [isStartClicked, setIsStartClicked] = useState(false);
     const [error, setError] = useState(null); 
     
     const handleMutipleCheckboxChange = (e) => {
@@ -45,6 +46,7 @@ const Visualization = () => {
         }
 
             setLoading(true);
+            setIsStartClicked(true);
             setError(null);
             setResult(null);
             console.log(algorithmMode);
@@ -67,14 +69,27 @@ const Visualization = () => {
               });
 
               if (!response.ok) {
-                const errorData = await response.json();
-                setError(errorData.Error || `HTTP error status: ${response.status}`);
+                const textData = await response.text();
+                if (textData.includes('No paths found for target')) {
+                    setResult(null);
+                    // setError(`Tidak ada resep valid ditemukan untuk ${selectedElement?.name}.`); 
+                } else {
+                    setError(textData || `HTTP error status: ${response.status}`);
+                }
                 return;
-              }
-              const data = await response.json();
-              console.log('Data dari backend:', data);
-              setResult(data);
-              console.log('Backend berhasil mengirim hasil resep');
+            }
+          
+            const contentType = response.headers.get('Content-Type');
+            if (contentType && contentType.includes('application/json')) {
+                const data = await response.json();
+                console.log('Data dari backend:', data);
+                setResult(data);
+                console.log('Backend berhasil mengirim hasil resep');
+            } else {
+                const textData = await response.text();
+                setError(`Respon dari server bukan JSON: ${textData}`);
+                console.error('Respon bukan JSON:', textData);
+            }
             } catch (err) {
               setError('Terjadi kesalahan saat menghubungi server.');
               console.error('Error:', err);
@@ -178,6 +193,7 @@ const Visualization = () => {
                       key={element.name}
                       onClick={() => {
                         setSelectedElement(element);
+                        setIsStartClicked(false);
                         setResult(null);
                         setError(null);
                         setCurrentPage(0);
@@ -283,46 +299,48 @@ const Visualization = () => {
             )}
           {loading && <p>Loading results...</p>}
           {error && <p className="text-red-500">Error: {error}</p>}
-          {(!result && !loading) && (
+          {(!result && !loading && !isStartClicked) && (
             <p className="text-gray-300 text-xl mt-4 px-2">Belum ada visualisasi</p>
           )}
-          {result && result.paths && result.paths.length > 0 ? (
-          <div className="flex-1 p-2 px-2 space-y-4">
-            <p className="mb-1 text-white text-xs">Jumlah Resep Ditemukan: {result.count}</p>
-            <p className="mb-4 text-white text-xs">Waktu: {result.elapsedTime} ms</p>
+          {result === null && isStartClicked && !loading? (
+            <p className="text-gray-500 py-2">Tidak ada resep valid ditemukan untuk {selectedElement?.name}.</p>
+          ) : (
+            result?.paths?.length > 0 ? (
+              <div className="flex-1 p-2 px-2 space-y-4">
+                <p className="mb-1 text-white text-xs">Jumlah Resep Ditemukan: {result.count}</p>
+                <p className="mb-4 text-white text-xs">Waktu: {result.elapsedTime} ms</p>
+            
+                {result?.paths?.length > 1 && isMultipleRecipe && (
+                  <div className="flex justify-center space-x-4 mb-4 items-center">
+                    <button
+                      onClick={() => setCurrentPage(currentPage - 1)}
+                      disabled={currentPage === 0}
+                      className={`px-3 py-1 rounded ${
+                        currentPage === 0
+                          ? 'bg-gray-500 text-white'
+                          : 'bg-white text-black border border-gray-300 hover:bg-gray-300'
+                      }`}
+                    >
+                      Prev
+                    </button>
+                    <span className="text-white">{currentPage + 1} / {result?.paths?.length}</span>
+                    <button
+                      onClick={() => setCurrentPage(currentPage + 1)}
+                      disabled={currentPage === (result?.paths?.length - 1)}
+                      className={`px-3 py-1 rounded ${
+                        currentPage === (result?.paths?.length - 1)
+                          ? 'bg-gray-500 text-white'
+                          : 'bg-white text-black border border-gray-300 hover:bg-gray-300'
+                      }`}
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
 
-            {result?.paths?.length > 1 && isMultipleRecipe && (
-              <div className="flex justify-center space-x-4 mb-4 items-center">
-                <button
-                  onClick={() => setCurrentPage(currentPage - 1)}
-                  disabled={currentPage === 0}
-                  className={`px-3 py-1 rounded ${
-                    currentPage === 0 
-                        ? 'bg-gray-500 text-white' 
-                        : 'bg-white text-black border border-gray-300 hover:bg-gray-300'
-                    }`}
-                >
-                Prev
-                </button>
-                <span className="text-white">{currentPage + 1} / {result?.paths?.length}</span>
-                <button
-                onClick={() => setCurrentPage(currentPage + 1)}
-                disabled={currentPage === (result?.paths?.length - 1)}
-                className={`px-3 py-1 rounded ${
-                currentPage === (result?.paths?.length - 1)
-                    ? 'bg-gray-500 text-white' 
-                    : 'bg-white text-black border border-gray-300 hover:bg-gray-300'
-                }`}
-                >
-                Next
-                </button>
-              </div>
-              )}
-
-
-            <div className="space-y-4 flex-1 ">
-              {(() => {
-                if (!result?.paths) return [];
+                <div className="space-y-4 flex-1 ">
+                  {(() => {
+                    if (!result?.paths) return [];
                     const indexOfLastRecipe = (currentPage + 1) * recipesPerPage;
                     const indexOfFirstRecipe = indexOfLastRecipe - recipesPerPage;
                     const currentRecipes = result.paths.slice(indexOfFirstRecipe, indexOfLastRecipe);
@@ -330,55 +348,56 @@ const Visualization = () => {
                       const treeData = convertPathToTreeData(recipeObject.path);
                       return treeData && (
                         <div key={index} className="border p-4 rounded-md flex flex-col flex-1 overflow-hidden">
-                          <h3 className="font-semibold">Recipe {indexOfFirstRecipe + index + 1}</h3>
+                          <div className="flex justify-between">
+                            <h3 className="font-semibold">Recipe {indexOfFirstRecipe + index + 1}</h3>
+                            <p className="text-xs text-gray-300 mt-1">Gunakan pinch untuk zoom in/out dan seret untuk bergerak</p>
+                          </div>
                           <p className="text-xs">Node Count: {recipeObject.nodeCount}</p>
                           <div className="overflow-auto flex-1 ">
                             <Tree
                               data={treeData}
                               orientation="bottom-top"
                               pathClassFunc={() => 'custom-link'}
-                              panOnDrag={false}              
-                              zoomable={true}                
+                              panOnDrag={false}
+                              zoomable={true}
                               translate={{ x: 420, y: 40 }}
-                              depthFactor={85} 
+                              depthFactor={85}
                               separation={{ siblings: 1.8, nonSiblings: 1.8 }}
                               nodeSize={{ x: 100, y: 60 }}
-                              scaleExtent={{ min: 0.2, max: 0.8 }} 
+                              scaleExtent={{ min: 0.2, max: 0.8 }}
                               renderCustomNodeElement={({ nodeDatum }) => (
                                 <g>
-                                <rect
-                                  width={140}
-                                  height={30}
-                                  x={-70}   
-                                  y={-12}   
-                                  fill="white"
-                                  stroke="#ccc"
-                                  style={{ cursor: 'pointer' }}
-                                />
-                                <text
-                                  x={0}
-                                  y={5}
-                                  fill={nodeDatum.children && nodeDatum.children.length > 0 ? 'blue' : 'black'}
-                                  textAnchor="middle"
-                                  alignmentBaseline="middle"
-                                  fontSize={12}
-                                  letterSpacing="2px"
-                                  style={{ fontWeight: 'normal' }}
-                                >
-                                  {nodeDatum.name}
-                                </text>
-                              </g>
-                            )}
-                          />
+                                  <rect
+                                    width={140}
+                                    height={30}
+                                    x={-70}
+                                    y={-12}
+                                    fill={nodeDatum.children && nodeDatum.children.length > 0 ? 'gray ' : 'white'}
+                                    stroke="#ccc"
+                                    style={{ cursor: 'pointer' }}
+                                  />
+                                  <text
+                                    x={0}
+                                    y={5}
+                                    fill="white"
+                                    textAnchor="middle"
+                                    alignmentBaseline="middle"
+                                    fontSize={12}
+                                    letterSpacing="2px"
+                                  >
+                                    {nodeDatum.name}
+                                  </text>
+                                </g>
+                              )}
+                            />
                           </div>
                         </div>
                       );
-                      });
-                    })()}
-                  </div>
+                    });
+                  })()}
                 </div>
-              ) : (
-            result && <p className="text-gray-500">Tidak ada resep ditemukan untuk {selectedElement?.name}.</p>
+              </div>
+            ) : null
           )}
         </div>
     </div>
