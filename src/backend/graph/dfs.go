@@ -1,9 +1,11 @@
 package graph
 
 import (
-    "backend/models"
-    "backend/utils"
-    // "fmt"
+	"backend/models"
+	"backend/utils"
+	"sort"
+	"strings"
+	// "fmt"
 )
 
 func ReverseDFS(target string, elements map[string]models.Element, elementTier map[string]int, seed int, strict bool) []models.Node {
@@ -38,40 +40,69 @@ func BidirectionalDFS(target string, elements map[string]models.Element, element
 		return []models.Node{{Name: target}}
 	}
 
+	elementNames := make([]string, 0, len(elements))
+    for name := range elements {
+        elementNames = append(elementNames, name)
+    }
+    sort.Strings(elementNames)
+	
 	// Initiate forward stack
 	forwardStack := [][]models.Node{}
-	for _, el := range elements{
-		for _, recipe := range el.Recipes{
-			if len(recipe) == 2 {
-				if elementTier[recipe[0]] == 0 && elementTier[recipe[1]] == 0 {
-					newNode := models.Node{
-						Name: el.Name,
-						Ingredient1: recipe[0],
-						Ingredient2: recipe[1],
-					}
-					entry := []models.Node{newNode}
-					forwardStack = append(forwardStack, entry)
-				}
-			}
-		}
-	}
+    for _, elName := range elementNames {
+        el := elements[elName]
+
+        sort.Slice(el.Recipes, func(i, j int) bool {
+            return strings.Join(el.Recipes[i], "+") < strings.Join(el.Recipes[j], "+")
+        })
+
+        for _, recipe := range el.Recipes {
+            if len(recipe) == 2 {
+                ing1, ing2 := recipe[0], recipe[1]
+
+                if ing1 > ing2 {
+                    ing1, ing2 = ing2, ing1
+                }
+
+                if elementTier[ing1] == 0 && elementTier[ing2] == 0 {
+                    newNode := models.Node{
+                        Name:        el.Name,
+                        Ingredient1: ing1,
+                        Ingredient2: ing2,
+                    }
+                    entry := []models.Node{newNode}
+                    forwardStack = append(forwardStack, entry)
+                }
+            }
+        }
+    }
 
 	// Initiate reverse stack
 	reverseStack := [][]models.Node{}
-	for _, recipe := range elements[target].Recipes {
-		if len(recipe) == 2 {
-			if elementTier[recipe[0]] < elementTier[target] && elementTier[recipe[1]] < elementTier[target] {
-				newNode := models.Node{
-					Name: target,
-					Ingredient1: recipe[0],
-					Ingredient2: recipe[1],
-				}
-				entry := []models.Node{newNode}
-				reverseStack = append(reverseStack, entry)
-			}
-		}
-	}
+	sort.Slice(elements[target].Recipes, func(i, j int) bool {
+        return strings.Join(elements[target].Recipes[i], "+") < strings.Join(elements[target].Recipes[j], "+")
+    })
+    
+    for _, recipe := range elements[target].Recipes {
+        if len(recipe) == 2 {
+            ing1, ing2 := recipe[0], recipe[1]
+    
+            if ing1 > ing2 {
+                ing1, ing2 = ing2, ing1
+            }
+    
+            if elementTier[ing1] < elementTier[target] && elementTier[ing2] < elementTier[target] {
+                newNode := models.Node{
+                    Name:        target,
+                    Ingredient1: ing1,
+                    Ingredient2: ing2,
+                }
+                entry := []models.Node{newNode}
+                reverseStack = append(reverseStack, entry)
+            }
+        }
+    }
 
+	// SEARCH
 	results := [][]models.Node{}
 	meetingLimit := 10
 	for len(forwardStack) > 0 && len(reverseStack) > 0{
@@ -85,12 +116,26 @@ func BidirectionalDFS(target string, elements map[string]models.Element, element
 		forwardStack = forwardStack[:len(forwardStack)-1] 
 
 		last := currentForward[len(currentForward)-1]
-		for _, el := range elements {
+		for _, elName := range elementNames {
+			el := elements[elName]
+		
+			sort.Slice(el.Recipes, func(i, j int) bool {
+				ri, rj := el.Recipes[i], el.Recipes[j]
+				a1, a2 := ri[0], ri[1]
+				if a1 > a2 { a1, a2 = a2, a1 }
+				b1, b2 := rj[0], rj[1]
+				if b1 > b2 { b1, b2 = b2, b1 }
+				return a1+"+"+a2 < b1+"+"+b2
+			})
+
 			for _, recipe := range el.Recipes {
 				if len(recipe) != 2 || elementTier[el.Name] >= elementTier[target] {
 					continue
 				}
-				if (recipe[0] == last.Name || recipe[1] == last.Name) && elementTier[recipe[0]] <= elementTier[target] && elementTier[recipe[1]] <= elementTier[target] {
+				if (recipe[0] == last.Name || recipe[1] == last.Name) &&
+				   elementTier[recipe[0]] <= elementTier[target] &&
+				   elementTier[recipe[1]] <= elementTier[target] {
+					
 					newNode := models.Node{
 						Name:        el.Name,
 						Ingredient1: recipe[0],
@@ -98,7 +143,7 @@ func BidirectionalDFS(target string, elements map[string]models.Element, element
 					}
 					newPath := append([]models.Node{}, currentForward...)
 					newPath = append(newPath, newNode)
-					forwardStack = append(forwardStack, newPath) 
+					forwardStack = append(forwardStack, newPath)
 				}
 			}
 		}
