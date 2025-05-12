@@ -194,6 +194,7 @@ const Visualization = () => {
                       onClick={() => {
                         setSelectedElement(element);
                         setIsStartClicked(false);
+                        setLoading(false);
                         setResult(null);
                         setError(null);
                         setCurrentPage(0);
@@ -287,17 +288,16 @@ const Visualization = () => {
                 </button>
               </div>
             </div>
-            {/* topbar tombol dfs bfs */}
             <div className="mt-4"></div>
-             {selectedElement ? (
+            {selectedElement ? (
               <div className="flex items-center space-x-3 px-2">
                 <h2 className="text-2xl font-semibold text-amber-600 mb-2">{selectedElement.name}</h2>
                 <img src={selectedElement.image} alt={selectedElement.name} className="w-12 h-12 mb-1" />
               </div>
             ) : (
               <p className="text-gray-400 mt-2 px-2">Silakan select elemen yang ingin divisualisasikan resepnya.</p>
-            )}
-          {loading && <p>Loading results...</p>}
+          )}
+          {loading && <p className="px-2">Loading results...</p>}
           {error && <p className="text-red-500">Error: {error}</p>}
           {(!result && !loading && !isStartClicked) && (
             <p className="text-gray-300 text-xl mt-4 px-2">Belum ada visualisasi</p>
