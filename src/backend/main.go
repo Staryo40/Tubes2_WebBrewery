@@ -1,6 +1,7 @@
 package main
 
 import (
+	// "backend/scrape"
     // "fmt"
     // "time"
 	// "backend/graph"
@@ -12,7 +13,11 @@ import (
 )
 
 func main() { 
-	//  ------------------------ API  ------------------------
+	// ------------------------ SCRAPING ------------------------
+	// elementsJsonPath := "elements.json"
+	// scrape.ScrapeElements(elementsJsonPath)
+
+	// ------------------------ API ------------------------
     elements := make(map[string]models.Element)
 	tiers := make(map[string]int)
     jsonPath := "../frontend/public/elements.json"
@@ -27,7 +32,7 @@ func main() {
 	log.Println("Server is running at http://localhost:8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 
-	// ------------------------ SINGULAR TESTS
+	// -------------------- SINGULAR TESTS --------------------
 	// target := "Faun"
 	// start := time.Now()
 
@@ -46,7 +51,7 @@ func main() {
 	// fmt.Printf("Total nodes: %d\n", utils.NodeCounter(result, tiers))
 
 
-	//  ------------------------ PRODUCE AN IMAGE
+	// -------------------- PRODUCE RESULT IMAGE --------------------
 	// dotPath := "test/grilled.dot"
 	// pngPath := "test/grilled.png"
 	// err := utils.WriteGraphvizImage(result, dotPath, pngPath)
@@ -54,7 +59,7 @@ func main() {
 	// 	fmt.Printf("Warning: could not write graphviz image: %v\n", err)
 	// }
 
-	//  ------------------------ TIME TEST
+	// ------------------------ TIME TEST ------------------------
 	// const runs = 1000
 	// var total time.Duration
 	// for i := 0; i < runs; i++ {

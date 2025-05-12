@@ -25,7 +25,7 @@ cd src/backend
 ```
 2. Download go dependencies
 ```bash
-go mod download
+go build
 ```
 ### Frontend (Next.js)
 1. Navigate to the `frontend/` folter:
@@ -34,7 +34,7 @@ cd src/frontend
 ```
 2. Install npm packages
 ```bash
-npm intall
+npm install
 ```
 
 ## Running the Program
