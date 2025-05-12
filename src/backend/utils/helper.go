@@ -172,25 +172,29 @@ func NodeCounter(path []models.Node, elementTier map[string]int) int {
 		nodeMap[node.Name] = node
 	}
 
+    cache := make(map[string]int)
     var countRecursive func(name string) int
-	countRecursive = func(name string) int {
-		tier := elementTier[name]
-		if tier == 0 {
-			return 1
-		}
-
-		node, exists := nodeMap[name]
-		if !exists {
-			return 0
-		}
-
-		return 1 + countRecursive(node.Ingredient1) + countRecursive(node.Ingredient2)
-	}
+    countRecursive = func(name string) int {
+        if v, ok := cache[name]; ok {
+            return v
+        }
+        tier := elementTier[name]
+        if tier == 0 {
+            cache[name] = 1
+            return 1
+        }
+        node, ok := nodeMap[name]
+        if !ok {
+            cache[name] = 0
+            return 0
+        }
+        total := 1 + countRecursive(node.Ingredient1) + countRecursive(node.Ingredient2)
+        cache[name] = total
+        return total
+    }
 
 	// Start recursion from the target
 	return countRecursive(targetName)
-
-    
 }
 
 func FindTarget(path []models.Node) string{

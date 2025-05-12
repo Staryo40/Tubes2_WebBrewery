@@ -3,61 +3,69 @@ package utils
 import (
 	"backend/models"
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 )
 
 func ConcurrentPathFinder(pathNumber, maxIteration int, finderFunc func(seed int) []models.Node, elementTier map[string]int) []models.CountedPath {
-	var (
-		wg        sync.WaitGroup
-		mu        sync.Mutex
-		result    [][]models.Node
-		resultSet = make(map[string]bool) 
-		resChan   = make(chan []models.Node, maxIteration)
-	)
+    type seedPath struct {
+        seed int
+        path []models.Node
+    }
 
-	// Spawn concurrent goroutines
-	for i := 0; i < maxIteration; i++ {
-		wg.Add(1)
-		go func(seed int) {
-			defer wg.Done()
-			path := finderFunc(seed)
-			if path != nil {
-				resChan <- path
-			}
-		}(i)
-	}
+    var (
+        wg      sync.WaitGroup
+        resChan = make(chan seedPath, maxIteration)
+    )
 
-	// Close the result channel once all goroutines are done
-	go func() {
-		wg.Wait()
-		close(resChan)
-	}()
+    // 1) Launch all finderFunc(seed) in parallel
+    for seed := 0; seed < maxIteration; seed++ {
+        wg.Add(1)
+        go func(seed int) {
+            defer wg.Done()
+            if p := finderFunc(seed); p != nil {
+                resChan <- seedPath{seed, p}
+            }
+        }(seed)
+    }
 
-	// Collect unique results until we hit the desired count
-	for path := range resChan {
-		fingerprint := PathFingerprint(path) 
-		mu.Lock()
-		if !resultSet[fingerprint] && len(result) < pathNumber {
-			resultSet[fingerprint] = true
-			result = append(result, path)
-		}
-		mu.Unlock()
+    // 2) Close channel once all goroutines finish
+    go func() {
+        wg.Wait()
+        close(resChan)
+    }()
 
-		if len(result) >= pathNumber {
-			break
-		}
-	}
+    // 3) Collect all results
+    all := make([]seedPath, 0, maxIteration)
+    for sp := range resChan {
+        all = append(all, sp)
+    }
 
-	// Convert to CountedPath
-	final := make([]models.CountedPath, len(result))
-	for i, path := range result {
-		final[i] = models.CountedPath{
-			NodeCount: NodeCounter(path, elementTier),
-			Path:      path,
-		}
-	}
-	return final
+    // 4) Sort by seed ascending
+    sort.Slice(all, func(i, j int) bool {
+        return all[i].seed < all[j].seed
+    })
+
+    // 5) Dedupe & pick first pathNumber unique paths
+    resultSet := make(map[string]bool)
+    final := make([]models.CountedPath, 0, pathNumber)
+
+    for _, sp := range all {
+        fp := PathFingerprint(sp.path)
+        if !resultSet[fp] {
+            resultSet[fp] = true
+            final = append(final, models.CountedPath{
+                NodeCount: NodeCounter(sp.path, elementTier),
+                Path:      sp.path,
+            })
+            if len(final) >= pathNumber {
+                break
+            }
+        }
+    }
+
+    return final
 }
 
 func PathFingerprint(path []models.Node) string {
