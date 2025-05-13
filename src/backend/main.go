@@ -1,29 +1,29 @@
 package main
 
 import (
+	"backend/api"
+	"backend/models"
+	"backend/utils"
 	// "backend/scrape"
-    // "fmt"
-    // "time"
+	// "fmt"
+	// "time"
 	// "backend/graph"
-    "log"
-    "net/http"
-    "backend/api" 
-    "backend/models"
-    "backend/utils"
+	"log"
+	"net/http"
 )
 
-func main() { 
+func main() {
 	// ------------------------ SCRAPING ------------------------
 	// elementsJsonPath := "elements.json"
 	// scrape.ScrapeElements(elementsJsonPath)
 
 	// ------------------------ API ------------------------
-    elements := make(map[string]models.Element)
+	elements := make(map[string]models.Element)
 	tiers := make(map[string]int)
-    jsonPath := "../frontend/public/elements.json"
+	jsonPath := "./elements.json"
 
 	utils.LoadElements(jsonPath, elements)
-	utils.LoadTierMap(jsonPath, tiers)	
+	utils.LoadTierMap(jsonPath, tiers)
 
 	api.InitData(elements, tiers)
 
