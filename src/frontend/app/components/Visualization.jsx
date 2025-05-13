@@ -60,12 +60,11 @@ const Visualization = () => {
 
             try {
                 const urls = [
-                    'http://localhost:8080/api/recipe',
-                    'https://web-brewery-kitchen-957948630882.asia-southeast2.run.app/api/recipe'
+                    'https://web-brewery-kitchen-957948630882.asia-southeast2.run.app/api/recipe',
                     // I read that this shouldn't be hardcoded. Welp.
+                    'http://localhost:8080/api/recipe'
                 ];
-                // We can check if the backend is running locally first.
-                // Makes a slight delay in the frontend.
+                // Falls back to a local backend if the online deployment fails
 
                 let response;
                 for (const url of urls) {
