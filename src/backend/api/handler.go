@@ -71,8 +71,11 @@ func RecipeHandler(w http.ResponseWriter, r *http.Request) {
     var result []models.CountedPath
     switch strings.ToUpper(req.Method) {
     case "BFS":
-		// result = graph.FindPathsBFS(req.Target, Elements, ElementTiers, req.PathNumber, req.Bidirectional)
-		result = graph.FindPathsBFSConcurrent(req.Target, Elements, ElementTiers, req.PathNumber, req.Bidirectional)
+		if req.Bidirectional {
+			result = graph.FindPathsBFS(req.Target, Elements, ElementTiers, req.PathNumber, req.Bidirectional)
+		} else {
+			result = graph.FindPathsBFSConcurrent(req.Target, Elements, ElementTiers, req.PathNumber, req.Bidirectional)
+		}
 		
     case "DFS":
 		// result = graph.FindPathsDFS(req.Target, Elements, ElementTiers, req.PathNumber, req.Bidirectional)
