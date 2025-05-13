@@ -524,7 +524,7 @@ func reconstructPath(node models.Node, recipeMap map[string]models.Node, visited
 	return result
 }
 
-func HeuristicReverseBFSHelper(target string, path []models.Node, elements map[string]models.Element, elementTier map[string]int) [][]models.Node {
+func HeuristicReverseBFSHelper(target string, path []models.Node, elements map[string]models.Element, elementTier map[string]int) [][]models.Node { 
     nameSet := make(map[string]bool)
     for _, node := range path {
         nameSet[node.Name] = true
@@ -651,9 +651,9 @@ func BidirectionalBFSHelper(forwardQueue [][]models.Node, reverseQueue [][]model
         }
     }
 
-    if len(results) > 0 {
-        return results[seed%len(results)]
-    }
+    // if len(results) > 0 {
+    //     return results[seed%len(results)]
+    // }
 
     return nil
 }

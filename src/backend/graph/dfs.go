@@ -294,7 +294,6 @@ func BidirectionalDFSHelper(forwardStack [][]models.Node, reverseStack [][]model
 		for _, rpath := range reverseStack {
 			for _, rnode := range rpath {
 				if forwardLast.Name == rnode.Name || forwardLast.Name == rnode.Ingredient1 || forwardLast.Name == rnode.Ingredient2 {
-
 					merged := MergePathsSmart(fpath, rpath, target, elementTier, elements)
 
 					// Ensure target is last
@@ -360,9 +359,9 @@ func BidirectionalDFSHelper(forwardStack [][]models.Node, reverseStack [][]model
 	}
 
 	// No path selected yet
-	if len(results) > 0 {
-		return results[seed%len(results)]
-	}
+	// if len(results) > 0 {
+	// 	return results[seed%len(results)]
+	// }
 
 	return nil
 }
