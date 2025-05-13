@@ -33,13 +33,13 @@ func main() {
 	log.Fatal(http.ListenAndServe(":8080", nil))
 
 	// -------------------- SINGULAR TESTS --------------------
-	// target := "Picnic"
+	// target := "Chameleon"
 	// start := time.Now()
 
 	// // result := graph.HeuristicReverseBFS(target, elements, tiers, 0)
-	// result := graph.BidirectionalBFS(target, elements, tiers, 1)
+	// // result := graph.BidirectionalBFS(target, elements, tiers, 1)
 	// // result := graph.ReverseDFS(target, elements, tiers, 0, true)
-	// // result := graph.BidirectionalDFS(target, elements, tiers, 1)
+	// result := graph.BidirectionalDFS(target, elements, tiers, 0)
 	// elapsed := time.Since(start)
 	// if result == nil {
 	// 	fmt.Println("Kok kosong")

@@ -134,10 +134,7 @@ func BidirectionalDFS(target string, elements map[string]models.Element, element
 				if len(recipe) != 2 || elementTier[el.Name] >= elementTier[target] {
 					continue
 				}
-				if (recipe[0] == last.Name || recipe[1] == last.Name) &&
-				   elementTier[recipe[0]] <= elementTier[target] &&
-				   elementTier[recipe[1]] <= elementTier[target] {
-					
+				if (recipe[0] == last.Name || recipe[1] == last.Name) && elementTier[recipe[0]] < elementTier[el.Name] && elementTier[recipe[1]] < elementTier[el.Name] {
 					newNode := models.Node{
 						Name:        el.Name,
 						Ingredient1: recipe[0],
@@ -161,11 +158,11 @@ func BidirectionalDFS(target string, elements map[string]models.Element, element
 
 		var missing string
 		for _, node := range currentReverse {
-			if elementTier[node.Ingredient1] != 0 && !nameSet[node.Ingredient1] {
+			if elementTier[node.Ingredient1] != 0 && !nameSet[node.Ingredient1] && elementTier[node.Ingredient1] < elementTier[node.Name] {
 				missing = node.Ingredient1
 				break
 			}
-			if elementTier[node.Ingredient2] != 0 && !nameSet[node.Ingredient2] {
+			if elementTier[node.Ingredient2] != 0 && !nameSet[node.Ingredient2]  && elementTier[node.Ingredient2] < elementTier[node.Name] {
 				missing = node.Ingredient2
 				break
 			}
@@ -252,8 +249,7 @@ func ReverseDFSHelper(current string, seed int, elements map[string]models.Eleme
 
 	validRecipe := [][]string{}
 	for _, recipe := range el.Recipes {
-		if len(recipe) == 2 &&
-			(elementTier[recipe[0]] < elementTier[current] && elementTier[recipe[1]] < elementTier[current]) {
+		if len(recipe) == 2 && elementTier[recipe[0]] < elementTier[current] && elementTier[recipe[1]] < elementTier[current] {
 			validRecipe = append(validRecipe, recipe)
 		}
 	}
@@ -304,7 +300,7 @@ func BidirectionalDFSHelper(forwardStack [][]models.Node, reverseStack [][]model
 					// Ensure target is last
 					if merged[len(merged)-1].Name != target {
 						for _, recipe := range elements[target].Recipes {
-							if len(recipe) == 2 && elementTier[recipe[0]] <= elementTier[target] && elementTier[recipe[1]] <= elementTier[target] {
+							if len(recipe) == 2 && elementTier[recipe[0]] < elementTier[target] && elementTier[recipe[1]] < elementTier[target] {
 
 								nameSet := make(map[string]bool)
 								for _, n := range merged {
@@ -326,6 +322,7 @@ func BidirectionalDFSHelper(forwardStack [][]models.Node, reverseStack [][]model
 					// Expand until fully resolved
 					expanded := merged
 					resolvedSeed := seed
+
 					for !IsFullyExpanded(expanded, elementTier) {
 						expanded = DFSExpandMissing(target, expanded, elements, elementTier, resolvedSeed)
 						resolvedSeed++
@@ -391,7 +388,6 @@ func MergePathsSmart(fpath []models.Node, rpath []models.Node, target string, el
 		}
 	}
 
-	// Step 3: Interleave from fpath[1:], rpath[:-1]
 	i, j := 1, len(rpath)-2
 	for i < len(fpath) || j >= 0 {
 		if i < len(fpath) {
@@ -454,6 +450,11 @@ func ingredientAvailable(node models.Node, path []models.Node) bool {
 }
 
 func DFSExpandMissing(target string, path []models.Node, elements map[string]models.Element, elementTier map[string]int, seed int) []models.Node {
+	// for _, entry := range path{ 
+	// 	fmt.Printf("%s", entry)
+	// }
+	// fmt.Println()
+
 	nameSet := make(map[string]bool)
 	for _, node := range path {
 		nameSet[node.Name] = true
@@ -461,15 +462,17 @@ func DFSExpandMissing(target string, path []models.Node, elements map[string]mod
 
 	var missing string
 	for _, node := range path {
-		if elementTier[node.Ingredient1] != 0 && !nameSet[node.Ingredient1] {
+		if elementTier[node.Ingredient1] != 0 && !nameSet[node.Ingredient1] && elementTier[node.Ingredient1] < elementTier[node.Name] {
 			missing = node.Ingredient1
 			break
 		}
-		if elementTier[node.Ingredient2] != 0 && !nameSet[node.Ingredient2] {
+		if elementTier[node.Ingredient2] != 0 && !nameSet[node.Ingredient2] && elementTier[node.Ingredient2] < elementTier[node.Name] {
 			missing = node.Ingredient2
 			break
 		}
 	}
+
+	// fmt.Println(missing)
 
 	if missing == "" {
 		return path
