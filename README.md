@@ -5,13 +5,22 @@ Breadth first search (BFS) is a pathfinding algorithm that focuses on exploring 
 
 Both algorithms are implemented in creating this simple web application project to find an element in the game called Little Alchemy 2, which is a game where we combine elements to find other more higher tier element. The goal of the game is to find all elements that are possible in the game. There are 720 elements in total in this game without any extra add-ons and finding the recipes to complete the game can become troublesome. That is why this app helps in finding paths to get to a certain element target. Specifically for this project the algorithm used are BFS, DFS, and Bidirectional search. Users can switch between modes to see the performance difference of each algorithm. In addition, there is a feature to show multiple paths towards a single target element that is implemented with multithreading to speed up the process of searcing.
 
+<p align="center">
+<img src="https://github.com/user-attachments/assets/3cc9188f-c9fc-4175-8420-b07e83401b94" alt="Element Recipe Search with BFS/DFS Algorithm Recording" width="700"/>
+</p>
+<p align="center">Element Recipe Searching</p>
+<p align="center">
+<img src="https://github.com/user-attachments/assets/a5ae7e72-5f25-4705-a325-e02547b73288" alt="Little Alchemy 2 Elements Encyclopedia" width="700"/>
+</p>
+<p align="center">Element Encyclopedia</p>
+
 ## Program Requirements
 ### Backend (Go)
-  - Go: ideally the latest 1.x release  
+  - Go (Latest 1.x version)
 
 ### Frontend (Next.js)
-- Node.js: version **16.x** or **18.x**  
-- npm: v8+
+- Node.js
+- NPM
 
 ### Containerized Setup
 - Docker & Docker Compose  
