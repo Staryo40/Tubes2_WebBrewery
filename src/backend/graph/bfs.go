@@ -651,9 +651,12 @@ func BidirectionalBFSHelper(forwardQueue [][]models.Node, reverseQueue [][]model
         }
     }
 
-    // if len(results) > 0 {
-    //     return results[seed%len(results)]
-    // }
+    if len(results) > 0 {
+        if len(results[seed % len(results)]) == 0 {
+            return nil
+        }
+        return results[seed%len(results)]
+    }
 
     return nil
 }
