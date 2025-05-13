@@ -326,7 +326,7 @@ const Visualization = () => {
             result?.paths?.length > 0 ? (
               <div className="flex-1 p-2 px-2 space-y-4">
                 <p className="mb-1 text-white text-xs">Jumlah Resep Ditemukan: {result.count}</p>
-                <p className="mb-4 text-white text-xs">Waktu: {result.elapsedTime} ms</p>
+                <p className="mb-4 text-white text-xs">Waktu: {result.elapsedTime} µs</p>
             
                 {result?.paths?.length > 1 && isMultipleRecipe && (
                   <div className="flex justify-center space-x-4 mb-4 items-center">
