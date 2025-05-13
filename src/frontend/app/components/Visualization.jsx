@@ -50,7 +50,6 @@ const Visualization = () => {
             setError(null);
             setResult(null);
             console.log(algorithmMode);
-            console.log('tes');
 
             const payload = {
               Target: selectedElement.name,
@@ -60,23 +59,42 @@ const Visualization = () => {
             };
 
             try {
-              const response = await fetch('http://localhost:8080/api/recipe', {
-                method: 'POST',
-                headers: {
-                  'Content-type': 'application/json',
-                },
-                body: JSON.stringify(payload),
-              });
+                const urls = [
+                    'http://localhost:8080/api/recipe',
+                    'https://web-brewery-kitchen-957948630882.asia-southeast2.run.app/api/recipe'
+                    // I read that this shouldn't be hardcoded. Welp.
+                ];
+                // We can check if the backend is running locally first.
+                // Makes a slight delay in the frontend.
 
-              if (!response.ok) {
-                const textData = await response.text();
-                if (textData.includes('No paths found for target')) {
-                    setResult(null);
-                    // setError(`Tidak ada resep valid ditemukan untuk ${selectedElement?.name}.`); 
-                } else {
-                    setError(textData || `HTTP error status: ${response.status}`);
+                let response;
+                for (const url of urls) {
+                    try {
+                        response = await fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'Content-type': 'application/json',
+                            },
+                            body: JSON.stringify(payload),
+                        });
+
+                        if (response.ok) {
+                            break; // Exit loop if successful
+                        }
+                    } catch (error) {
+                        console.log(`Gagal fetch dari ${url}:`, error);
+                    }
                 }
-                return;
+
+                if (!response.ok) {
+                    const textData = await response.text();
+                    if (textData.includes('No paths found for target')) {
+                        setResult(null);
+                        // setError(`Tidak ada resep valid ditemukan untuk ${selectedElement?.name}.`);
+                    } else {
+                        setError(textData || `HTTP error status: ${response.status}`);
+                    }
+                    return;
             }
           
             const contentType = response.headers.get('Content-Type');
